@@ -1,0 +1,2904 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midas CRM — Quản lý Khách hàng &amp; Deal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============================================================
+   MIDAS CRM — Design tokens
+   White/light background, blue glassmorphism, industrial line icons
+   Montserrat (unified across headings, body, and data)
+   ============================================================ */
+:root{
+  --bg: #f5f7fb;
+  --bg-grid: #eef1f8;
+  --surface: #ffffff;
+  --surface-glass: rgba(255,255,255,0.72);
+  --border: #e3e8f2;
+  --border-strong: #c9d3e6;
+  --ink: #101425;
+  --ink-soft: #545e78;
+  --ink-faint: #8892ab;
+  --blue: #2f5eff;
+  --blue-deep: #1c3ec7;
+  --blue-soft: #eaf0ff;
+  --blue-glass: rgba(47,94,255,0.08);
+  --blue-glass-border: rgba(47,94,255,0.22);
+  --red: #e5484d;
+  --red-soft: #fdecec;
+  --amber: #d98a1f;
+  --amber-soft: #fdf3e2;
+  --green: #1a9e6f;
+  --green-soft: #e7f8f1;
+  --violet: #7c5cff;
+  --violet-soft: #f1edff;
+  --gray-soft: #eef1f6;
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(16,20,37,0.04), 0 1px 1px rgba(16,20,37,0.03);
+  --shadow: 0 8px 24px -8px rgba(28,45,120,0.14);
+  --shadow-lg: 0 24px 60px -16px rgba(28,45,120,0.24);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Montserrat',sans-serif;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(47,94,255,0.06), transparent 40%),
+    var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  font-size:14px;
+  line-height:1.5;
+}
+h1,h2,h3,h4{font-family:'Montserrat',sans-serif; letter-spacing:-0.01em;}
+.mono{font-family:'Montserrat',sans-serif; font-variant-numeric:tabular-nums;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:14px;}
+a{color:inherit;}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ---------- Icons (industrial line style) ---------- */
+.icon{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;}
+
+/* ---------- App shell ---------- */
+.app{display:grid; grid-template-columns:236px 1fr; min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:20px 14px;
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh;
+}
+.brand{display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:6px 8px 22px 8px;}
+.brand-logo{height:30px; width:auto; display:block;}
+.brand-tag{font-size:10px; color:var(--ink-faint); font-family:'Montserrat'; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; padding-left:1px;}
+
+.nav{display:flex; flex-direction:column; gap:2px; flex:1;}
+.nav-item{
+  display:flex; align-items:center; gap:11px;
+  padding:9px 12px; border-radius:10px;
+  color:var(--ink-soft); font-weight:500; font-size:13.5px;
+  border:1px solid transparent; background:none; text-align:left; width:100%;
+  transition:background .12s, color .12s;
+  position:relative;
+}
+.nav-item .icon{width:17px; height:17px;}
+.nav-item:hover{background:var(--gray-soft); color:var(--ink);}
+.nav-item.active{
+  background:var(--blue-glass); color:var(--blue-deep); border-color:var(--blue-glass-border); font-weight:600;
+}
+.nav-badge{
+  margin-left:auto; font-family:'Montserrat'; font-size:10.5px; font-weight:600;
+  background:var(--red-soft); color:var(--red); border-radius:20px; padding:1px 7px;
+}
+.nav-section-label{font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; padding:14px 12px 6px;}
+
+.sidebar-foot{border-top:1px solid var(--border); padding-top:12px; margin-top:8px; display:flex; flex-direction:column; gap:6px;}
+.sidebar-foot .nav-item{font-size:12.5px;}
+
+/* ---------- Main ---------- */
+.main{padding:26px 32px 60px; max-width:1400px; width:100%;}
+.main-dashboard-bg{
+  background:
+    radial-gradient(circle at 10% 0%, rgba(214,168,60,0.13), transparent 42%),
+    radial-gradient(circle at 92% 6%, rgba(245,214,120,0.12), transparent 40%);
+  border-radius:0 0 24px 24px;
+}
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap;}
+.topbar h1{font-size:22px; font-weight:700;}
+.topbar-sub{color:var(--ink-faint); font-size:12.5px; margin-top:3px; font-family:'Montserrat';}
+.topbar-actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+
+.search-box{
+  display:flex; align-items:center; gap:8px;
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:8px 12px; min-width:260px;
+}
+.search-box input{border:none; outline:none; background:none; flex:1; font-size:13.5px;}
+.search-box .icon{color:var(--ink-faint); width:16px; height:16px;}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 15px; border-radius:10px; border:1px solid var(--border);
+  background:var(--surface); color:var(--ink); font-weight:600; font-size:13px;
+  transition:all .12s;
+  white-space:nowrap;
+}
+.btn .icon{width:15px; height:15px;}
+.btn:hover{border-color:var(--border-strong); background:var(--gray-soft);}
+.btn-primary{background:linear-gradient(135deg, var(--blue), var(--blue-deep)); color:#fff; border:none; box-shadow:0 6px 16px -6px rgba(47,94,255,0.55);}
+.btn-primary:hover{filter:brightness(1.06);}
+.btn-ghost{background:none; border-color:transparent;}
+.btn-ghost:hover{background:var(--gray-soft);}
+.btn-danger{color:var(--red); border-color:var(--red-soft);}
+.btn-danger:hover{background:var(--red-soft);}
+.btn-sm{padding:6px 11px; font-size:12px; border-radius:8px;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+
+/* ---------- Cards / glass ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+}
+.glass{
+  background:var(--surface-glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--blue-glass-border);
+}
+
+/* ---------- KPI grid ---------- */
+.kpi-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:20px;}
+.kpi-card{
+  padding:18px 18px 16px; border-radius:var(--radius); position:relative; overflow:hidden;
+  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-sm);
+}
+.kpi-card::before{
+  content:''; position:absolute; inset:0; opacity:.5; pointer-events:none;
+  background:radial-gradient(circle at 100% 0%, var(--blue-glass), transparent 60%);
+}
+.kpi-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+.kpi-icon{
+  width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  background:var(--blue-glass); color:var(--blue-deep); border:1px solid var(--blue-glass-border);
+}
+.kpi-icon.red{background:var(--red-soft); color:var(--red); border-color:transparent;}
+.kpi-icon.amber{background:var(--amber-soft); color:var(--amber); border-color:transparent;}
+.kpi-icon.green{background:var(--green-soft); color:var(--green); border-color:transparent;}
+.kpi-icon.violet{background:var(--violet-soft); color:var(--violet); border-color:transparent;}
+.kpi-label{font-size:12px; color:var(--ink-faint); font-weight:600;}
+.kpi-value{font-family:'Montserrat'; font-size:26px; font-weight:700; margin-top:2px;}
+.kpi-foot{font-size:11.5px; color:var(--ink-faint); margin-top:6px; font-family:'Montserrat';}
+
+/* ---------- Alerts strip ---------- */
+.alert-strip{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+.alert-pill{
+  display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius:11px; font-size:13px; font-weight:600;
+  border:1px solid transparent; cursor:pointer; transition:transform .12s;
+}
+.alert-pill:hover{transform:translateY(-1px);}
+.alert-pill.red{background:var(--red-soft); color:#b0262b;}
+.alert-pill.amber{background:var(--amber-soft); color:#9a6712;}
+.alert-pill.green{background:var(--green-soft); color:#0f7a53;}
+.alert-pill .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+.alert-pill .count{font-family:'Montserrat'; font-weight:700;}
+
+/* ---------- Section headers ---------- */
+.section-head{display:flex; align-items:center; justify-content:space-between; margin:26px 0 12px;}
+.section-head h3{font-size:15px; font-weight:700;}
+.section-head .see-all{font-size:12.5px; color:var(--blue-deep); font-weight:600;}
+
+.dash-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:16px; align-items:start;}
+
+/* ---------- Table ---------- */
+.table-wrap{overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface);}
+table{width:100%; border-collapse:collapse; font-size:13px;}
+thead th{
+  text-align:left; padding:11px 14px; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;
+  color:var(--ink-faint); font-weight:700; border-bottom:1px solid var(--border); background:var(--bg-grid);
+  white-space:nowrap;
+}
+tbody td{padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .1s;}
+tbody tr.clickable{cursor:pointer;}
+tbody tr.clickable:hover{background:var(--blue-glass);}
+.cell-main{font-weight:600;}
+.cell-sub{color:var(--ink-faint); font-size:12px; margin-top:1px;}
+.cell-value{font-family:'Montserrat'; font-weight:600;}
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px;
+  font-size:11.5px; font-weight:700; white-space:nowrap; font-family:'Montserrat'; letter-spacing:0.01em;
+}
+.badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+.badge-priority{font-family:'Montserrat'; font-weight:600;}
+
+/* ---------- Inline quick status select (looks like a badge, acts like a dropdown) ---------- */
+.status-select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  border:none; border-radius:20px; padding:4px 24px 4px 10px;
+  font-size:11.5px; font-weight:700; font-family:'Montserrat',sans-serif; letter-spacing:0.01em;
+  cursor:pointer; outline:none; transition:filter .1s;
+  background-repeat:no-repeat; background-position:right 8px center; background-size:9px;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(16,20,37,0.45)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+.status-select:hover{filter:brightness(0.97);}
+.status-select:focus{box-shadow:0 0 0 3px var(--blue-glass);}
+.status-select option{color:var(--ink); background:var(--surface); font-weight:600;}
+
+/* ---------- Filters bar ---------- */
+.filters-bar{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-bottom:16px;}
+.select-chip, select.select-chip{
+  padding:8px 12px; border-radius:9px; border:1px solid var(--border); background:var(--surface);
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); outline:none;
+}
+.chip-toggle{
+  padding:8px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface);
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:6px;
+}
+.chip-toggle.active{background:var(--red-soft); color:#b0262b; border-color:transparent;}
+.chip-toggle .icon{width:14px; height:14px;}
+
+/* ---------- Date range filter (calendar-style popover) ---------- */
+.date-filter-wrap{position:relative;}
+.date-filter-panel{
+  position:absolute; top:calc(100% + 6px); left:0; z-index:60; width:270px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-lg);
+  padding:14px; display:flex; flex-direction:column; gap:10px;
+}
+.date-filter-presets{display:flex; flex-direction:column; gap:5px;}
+.date-filter-presets .chip-toggle{width:100%; justify-content:flex-start; text-align:left;}
+.date-filter-presets .chip-toggle.active{background:var(--blue-glass); color:var(--blue-deep);}
+.date-filter-divider{font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; font-weight:700; border-top:1px solid var(--border); padding-top:10px;}
+.date-filter-range{display:flex; gap:8px;}
+.date-filter-range .form-field{flex:1; gap:4px;}
+.date-filter-range .form-field label{font-size:10.5px;}
+.date-filter-range input{padding:7px 8px; font-size:12.5px; width:100%;}
+.date-filter-actions{display:flex; justify-content:space-between; gap:8px;}
+
+/* ---------- Empty state ---------- */
+.empty-state{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  padding:60px 20px; color:var(--ink-faint); gap:10px;
+}
+.empty-state .icon{width:38px; height:38px; color:var(--border-strong); stroke-width:1.3;}
+.empty-state b{color:var(--ink-soft); font-family:'Montserrat'; font-size:15px;}
+
+/* ---------- Modal ---------- */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(16,20,37,0.42); backdrop-filter:blur(3px);
+  display:flex; align-items:flex-start; justify-content:center; padding:40px 16px;
+  z-index:100; overflow-y:auto; animation:fadeIn .15s ease;
+}
+@keyframes fadeIn{from{opacity:0} to{opacity:1}}
+.modal{
+  background:var(--surface); border-radius:var(--radius-lg); width:100%; max-width:640px;
+  box-shadow:var(--shadow-lg); border:1px solid var(--border); animation:slideUp .18s ease;
+  max-height:calc(100vh - 80px); display:flex; flex-direction:column;
+}
+.modal.modal-lg{max-width:840px;}
+@keyframes slideUp{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:16px; font-weight:700;}
+.modal-close{width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); background:var(--surface); color:var(--ink-faint);}
+.modal-close:hover{background:var(--gray-soft); color:var(--ink);}
+.modal-body{padding:20px 22px; overflow-y:auto;}
+.modal-foot{display:flex; justify-content:flex-end; gap:10px; padding:16px 22px; border-top:1px solid var(--border);}
+
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.form-field{display:flex; flex-direction:column; gap:6px;}
+.form-field.full{grid-column:1/-1;}
+.form-field label{font-size:12px; font-weight:700; color:var(--ink-soft);}
+.form-field .hint{font-size:10.5px; color:var(--ink-faint); font-weight:500;}
+.form-field input, .form-field select, .form-field textarea{
+  padding:9px 11px; border-radius:9px; border:1px solid var(--border); outline:none; background:var(--bg);
+  transition:border-color .12s, background .12s;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus{
+  border-color:var(--blue); background:var(--surface); box-shadow:0 0 0 3px var(--blue-glass);
+}
+.form-field textarea{resize:vertical; min-height:70px;}
+.form-divider{grid-column:1/-1; border-top:1px dashed var(--border); margin:4px 0 2px; padding-top:14px; font-size:12px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em;}
+
+/* ---------- Detail panel ---------- */
+.detail-grid{display:grid; grid-template-columns:220px 1fr; gap:22px;}
+.detail-info dl{display:flex; flex-direction:column; gap:12px;}
+.detail-info dt{font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); font-weight:700; margin-bottom:2px;}
+.detail-info dd{font-size:13px; font-weight:500;}
+.detail-tabs{display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:16px; flex-wrap:wrap;}
+.detail-tab{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  padding:9px 4px; margin-right:20px; font-size:13px; font-weight:600; color:var(--ink-faint);
+  border:none; border-bottom:2px solid transparent; background:none; outline:none; cursor:pointer;
+  transition:color .12s, border-color .12s;
+}
+.detail-tab:hover{color:var(--ink-soft);}
+.detail-tab.active{color:var(--blue-deep); border-bottom-color:var(--blue);}
+
+.deal-mini-card{border:1px solid var(--border); border-radius:12px; padding:13px 14px; margin-bottom:10px; background:var(--bg);}
+.deal-mini-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+.deal-mini-top .name{font-weight:700; font-size:13.5px;}
+.deal-mini-meta{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-faint); font-family:'Montserrat';}
+
+.timeline{display:flex; flex-direction:column; gap:0; position:relative;}
+.timeline-item{display:flex; gap:12px; padding-bottom:16px; position:relative;}
+.timeline-item::before{content:''; position:absolute; left:5px; top:16px; bottom:0; width:1px; background:var(--border);}
+.timeline-item:last-child::before{display:none;}
+.timeline-dot{width:11px; height:11px; border-radius:50%; background:var(--blue); border:2px solid var(--blue-soft); margin-top:3px; flex-shrink:0;}
+.timeline-body{flex:1;}
+.timeline-date{font-size:11px; color:var(--ink-faint); font-family:'Montserrat'; font-weight:600;}
+.timeline-text{font-size:13px; margin-top:2px;}
+.next-action-box{
+  margin-top:14px; padding:12px 14px; border-radius:11px; background:var(--blue-glass); border:1px solid var(--blue-glass-border);
+  display:flex; align-items:center; gap:10px;
+}
+.next-action-box .icon{color:var(--blue-deep);}
+.next-action-box b{font-family:'Montserrat'; font-size:13px;}
+
+/* ---------- Kanban ---------- */
+.kanban-wrap{display:flex; gap:14px; overflow-x:auto; padding-bottom:14px;}
+.kanban-col{flex:0 0 268px; background:var(--bg-grid); border-radius:14px; padding:12px; border:1px solid var(--border); min-height:200px;}
+.kanban-col-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 2px;}
+.kanban-col-head .title{font-size:12.5px; font-weight:700;}
+.kanban-col-head .count{font-family:'Montserrat'; font-size:11px; color:var(--ink-faint); background:var(--surface); border:1px solid var(--border); padding:1px 7px; border-radius:20px;}
+.kanban-col-sum{font-size:10.5px; color:var(--ink-faint); font-family:'Montserrat'; margin-bottom:8px; padding:0 2px;}
+.kanban-col.drag-over{background:var(--blue-glass); border-color:var(--blue);}
+.kanban-col-won{background:var(--green-soft); border-color:rgba(15,122,83,0.25);}
+.kanban-col-won .kanban-col-head .title{color:#0f7a53;}
+.kanban-cards{display:flex; flex-direction:column; gap:9px; min-height:40px;}
+.kcard{
+  background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:11px 12px;
+  cursor:grab; box-shadow:var(--shadow-sm); transition:box-shadow .12s, transform .12s;
+}
+.kcard:hover{box-shadow:var(--shadow); transform:translateY(-1px);}
+.kcard.dragging{opacity:.4;}
+.kcard .company{font-weight:700; font-size:12.5px;}
+.kcard .project{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+.kcard .value{font-family:'Montserrat'; font-weight:700; font-size:12.5px; color:var(--blue-deep); margin-top:7px;}
+.kcard-foot{display:flex; align-items:center; justify-content:space-between; margin-top:8px;}
+.kcard-owner{font-size:10.5px; color:var(--ink-faint); font-family:'Montserrat';}
+
+.kanban-lost-zone{
+  margin-top:16px; border:2px dashed rgba(229,72,77,0.4); border-radius:14px;
+  padding:12px 14px; background:rgba(229,72,77,0.03); transition:background .15s, border-color .15s;
+}
+.kanban-lost-zone.drag-over{background:var(--red-soft); border-color:var(--red);}
+.kanban-lost-head{display:flex; align-items:center; justify-content:space-between; font-size:12.5px; font-weight:700; color:#b0262b; margin-bottom:10px; flex-wrap:wrap; gap:6px;}
+.kanban-lost-head .icon{width:15px; height:15px; vertical-align:-3px; margin-right:2px;}
+.kanban-lost-cards{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px;}
+.kanban-lost-cards .kcard{flex:0 0 210px; opacity:.72; filter:grayscale(0.25);}
+.kanban-lost-cards .kcard:hover{opacity:1; filter:none;}
+.kanban-lost-empty{font-size:12px; color:var(--ink-faint); padding:8px 4px;}
+
+/* ---------- Reports ---------- */
+.chart-card{padding:18px; border-radius:var(--radius); background:var(--surface); border:1px solid var(--border);}
+.chart-card h4{font-size:13px; font-weight:700; margin-bottom:3px;}
+.chart-desc{font-size:11.5px; color:var(--ink-faint); margin-bottom:14px; line-height:1.5;}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed; bottom:22px; right:22px; background:var(--ink); color:#fff; padding:12px 18px; border-radius:11px;
+  font-size:13px; font-weight:600; box-shadow:var(--shadow-lg); z-index:200; display:flex; align-items:center; gap:9px;
+  animation:toastIn .2s ease;
+}
+.toast.error{background:var(--red);}
+@keyframes toastIn{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+
+/* ---------- Confirm dialog ---------- */
+.confirm-box{max-width:380px; text-align:center; padding:26px 24px;}
+.confirm-box .icon-wrap{width:46px; height:46px; border-radius:12px; background:var(--red-soft); color:var(--red); display:flex; align-items:center; justify-content:center; margin:0 auto 14px;}
+.confirm-box h3{font-size:15.5px; margin-bottom:6px;}
+.confirm-box p{font-size:13px; color:var(--ink-faint); margin-bottom:20px;}
+.confirm-box .actions{display:flex; gap:10px; justify-content:center;}
+
+/* ---------- Calendar ---------- */
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+.cal-head-row{margin-bottom:6px;}
+.cal-headcell{font-size:11px; font-weight:700; color:var(--ink-faint); text-align:center; padding:4px 0; text-transform:uppercase; letter-spacing:0.04em;}
+.cal-cell{
+  min-height:78px; border:1px solid var(--border); border-radius:10px; padding:6px;
+  cursor:pointer; background:var(--surface); display:flex; flex-direction:column; gap:3px;
+  transition:border-color .12s, background .12s; overflow:hidden;
+}
+.cal-cell:hover{border-color:var(--blue);}
+.cal-cell.cal-empty{visibility:hidden; cursor:default; border:none;}
+.cal-cell.cal-today{background:var(--blue-glass); border-color:var(--blue);}
+.cal-daynum{font-size:11.5px; font-weight:700; color:var(--ink-soft);}
+.cal-today .cal-daynum{color:var(--blue-deep);}
+.cal-chip{font-size:9.5px; font-weight:600; background:var(--blue-glass); color:var(--blue-deep); border-radius:5px; padding:1.5px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cal-more{font-size:9.5px; color:var(--ink-faint); font-weight:600;}
+@media (max-width:760px){
+  .cal-cell{min-height:52px; padding:4px;}
+  .cal-chip{display:none;}
+}
+
+/* ---------- Settings ---------- */
+.settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.settings-card{padding:18px; border-radius:var(--radius); background:var(--surface); border:1px solid var(--border);}
+.settings-card h4{font-size:14px; margin-bottom:6px;}
+.settings-card p{font-size:12.5px; color:var(--ink-faint); margin-bottom:14px; line-height:1.6;}
+
+.mobile-menu-btn{display:none; align-items:center; justify-content:center; width:36px; height:36px; border-radius:9px; border:1px solid var(--border); background:var(--surface); flex-shrink:0;}
+.mobile-backdrop{display:none;}
+
+/* ============================================================
+   RESPONSIVE — tablet & mobile
+   ============================================================ */
+
+/* Tablet / small laptop */
+@media (max-width:1080px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .dash-grid{grid-template-columns:1fr;}
+  .settings-grid{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:200px 1fr; gap:16px;}
+}
+
+/* Phones & narrow tablets */
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:fixed; z-index:90; left:-260px; top:0; transition:left .2s; width:236px; box-shadow:var(--shadow-lg);}
+  .sidebar.open{left:0;}
+  .mobile-backdrop{display:block; position:fixed; inset:0; background:rgba(16,20,37,0.4); z-index:80;}
+  .mobile-menu-btn{display:flex !important;}
+  .main{padding:16px 12px 50px; max-width:100%;}
+
+  .topbar{gap:10px;}
+  .topbar h1{font-size:19px;}
+  .topbar-sub{font-size:11.5px;}
+  .topbar-actions{width:100%;}
+  .topbar-actions .btn{flex:1; justify-content:center;}
+
+  .kpi-grid{grid-template-columns:1fr 1fr; gap:10px;}
+  .kpi-card{padding:14px 14px 12px;}
+  .kpi-value{font-size:21px;}
+
+  .alert-strip{gap:8px;}
+  .alert-pill{font-size:12px; padding:8px 11px; flex:1 1 auto;}
+
+  .filters-bar{gap:7px;}
+  .search-box{min-width:0; width:100%; flex:1 1 100%;}
+  .select-chip, select.select-chip, .chip-toggle{font-size:12px; padding:7px 10px;}
+
+  .form-grid{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr; gap:18px;}
+
+  /* Prevent iOS Safari auto-zoom on input focus (requires >=16px font-size) */
+  .form-field input, .form-field select, .form-field textarea,
+  .search-box input, .status-select, #statusUpdateText, #statusNADue, #newDealNote,
+  #doc_title, #doc_url, #doc_note, #na_text, #na_due, #dateFilterFrom, #dateFilterTo {
+    font-size:16px;
+  }
+
+  .modal-overlay{padding:0; align-items:flex-end;}
+  .modal{max-width:100%; width:100%; border-radius:16px 16px 0 0; max-height:92vh;}
+  .modal-head{padding:14px 16px;}
+  .modal-body{padding:16px;}
+  .modal-foot{padding:12px 16px; flex-wrap:wrap;}
+  .modal-foot .btn{flex:1; justify-content:center;}
+
+  .kanban-wrap{gap:10px;}
+  .kanban-col{flex:0 0 240px; scroll-snap-align:start;}
+  .kanban-wrap{scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
+
+  .table-wrap{-webkit-overflow-scrolling:touch;}
+  table{font-size:12.5px;}
+  thead th{padding:9px 10px;}
+  tbody td{padding:10px 10px;}
+
+  .btn-sm{padding:7px 12px;}
+  .dash-grid{gap:14px;}
+  .cal-headcell{font-size:9.5px;}
+}
+
+/* Very small phones */
+@media (max-width:400px){
+  .kpi-grid{grid-template-columns:1fr;}
+  .brand-logo{height:26px;}
+}
+
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div id="app" class="app"></div>
+
+<script>
+/* ============================================================
+   MIDAS CRM — Application logic
+   ============================================================ */
+
+/* ---------------- Icons (industrial line style, inline SVG strings) ---------------- */
+const ICONS = {
+  dashboard: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  customers: '<svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="7.5" r="2.4"/><path d="M15.8 13.6c2.9.3 5.2 2.6 5.2 6"/></svg>',
+  pipeline: '<svg class="icon" viewBox="0 0 24 24"><path d="M3 5h18"/><path d="M6 12h15"/><path d="M10 19h11"/><circle cx="3" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="10" cy="19" r="1.4" fill="currentColor" stroke="none"/></svg>',
+  followup: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>',
+  reports: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>',
+  calendar: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 2.5v4M16 2.5v4"/><circle cx="8" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1" fill="currentColor" stroke="none"/></svg>',
+  settings: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.7 7.7 0 000-3l2-1.6-2-3.4-2.4.7a7.6 7.6 0 00-2.6-1.5L14 2h-4l-.4 2.7a7.6 7.6 0 00-2.6 1.5l-2.4-.7-2 3.4 2 1.6a7.7 7.7 0 000 3l-2 1.6 2 3.4 2.4-.7a7.6 7.6 0 002.6 1.5L10 22h4l.4-2.7a7.6 7.6 0 002.6-1.5l2.4.7 2-3.4-2-1.6z"/></svg>',
+  search: '<svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  plus: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  x: '<svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  edit: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
+  trash: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"/></svg>',
+  copy: '<svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg>',
+  users: '<svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>',
+  bolt: '<svg class="icon" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>',
+  coin: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 1.1 3 2.4c0 3-6 1.4-6 4.4 0 1.3 1.3 2.4 3 2.4s3-1.1 3-2.5"/></svg>',
+  flag: '<svg class="icon" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-3 4.5L18 13H5"/></svg>',
+  alert: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 9v4"/><circle cx="12" cy="16.3" r="0.5" fill="currentColor"/><path d="M10.3 3.6L2.6 18a1.8 1.8 0 001.6 2.7h15.6a1.8 1.8 0 001.6-2.7L13.7 3.6a1.8 1.8 0 00-3.4 0z"/></svg>',
+  clock: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  check: '<svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>',
+  download: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 3v13m0 0l-4.5-4.5M12 16l4.5-4.5"/><path d="M4 19h16"/></svg>',
+  upload: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 21V8m0 0l-4.5 4.5M12 8l4.5 4.5"/><path d="M4 21h16"/></svg>',
+  globe: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg>',
+  mail: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  phone: '<svg class="icon" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg>',
+  building: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18"/><path d="M14 8h6v13h-6"/><path d="M7 7h1M7 11h1M7 15h1"/></svg>',
+  arrowRight: '<svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  menu: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  target: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg>',
+  note: '<svg class="icon" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>',
+};
+
+/* ---------------- Constants ---------------- */
+const STORAGE_KEY = 'midas_crm_data_v1'; // fallback only, used when Supabase is not configured
+
+/* ---------------- Supabase config ----------------
+   Điền URL và publishable/anon key của dự án Supabase vào 2 dòng dưới đây
+   (xem SUPABASE_SETUP.md). Đây là khoá "anon/publishable" — an toàn để lộ ở
+   frontend vì mọi quyền truy cập dữ liệu đều được kiểm soát bởi Row Level
+   Security (RLS) trên database, KHÔNG dùng service_role/secret key ở đây.
+   Có thể set qua window.MIDAS_SUPABASE_URL / window.MIDAS_SUPABASE_ANON_KEY
+   (ví dụ bằng Netlify Snippet Injection) để tránh commit giá trị thật lên GitHub. */
+const SUPABASE_URL = window.MIDAS_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = window.MIDAS_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+const supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+if(!supabaseClient){
+  console.warn('[Midas CRM] Supabase chưa được cấu hình — đang chạy ở chế độ local (localStorage) tạm thời. Xem SUPABASE_SETUP.md để kết nối database dùng chung.');
+}
+
+/* ---------------- Supabase <-> STATE mappers ---------------- */
+const _nn = v => (v===undefined || v==='') ? null : v; // normalize empty string -> null for DB
+function customerToRow(c){
+  return { id:c.id, name:c.name, contact:_nn(c.contact), position:_nn(c.position), phone:_nn(c.phone),
+    email:_nn(c.email), website:_nn(c.website), industry:_nn(c.industry), source:_nn(c.source),
+    owner:_nn(c.owner), status:_nn(c.status), note:_nn(c.note),
+    created_at:_nn(c.createdAt), updated_at:_nn(c.updatedAt) };
+}
+function rowToCustomer(r){
+  return { id:r.id, name:r.name, contact:r.contact||'', position:r.position||'', phone:r.phone||'',
+    email:r.email||'', website:r.website||'', industry:r.industry||'', source:r.source||'',
+    owner:r.owner||'', status:r.status||'lead', note:r.note||'',
+    createdAt:r.created_at, updatedAt:r.updated_at };
+}
+function dealToRow(d){
+  return { id:d.id, customer_id:_nn(d.customerId), name:d.name, service:_nn(d.service),
+    value:(d.value===undefined||d.value===null||d.value==='')?null:Number(d.value), owner:_nn(d.owner),
+    start_date:_nn(d.startDate), deadline:_nn(d.deadline), next_follow_up:_nn(d.nextFollowUp),
+    priority:_nn(d.priority), deal_stage:_nn(d.dealStage),
+    probability:(d.probability===undefined||d.probability===null||d.probability==='')?null:Number(d.probability),
+    next_action:_nn(d.nextAction), note:_nn(d.note), documents:d.documents||[] };
+}
+function rowToDeal(r){
+  return { id:r.id, customerId:r.customer_id, name:r.name, service:r.service||'', value:r.value,
+    owner:r.owner||'', startDate:r.start_date||'', deadline:r.deadline||'', nextFollowUp:r.next_follow_up||'',
+    priority:r.priority||'medium', dealStage:r.deal_stage||'lead', probability:r.probability||0,
+    nextAction:r.next_action||'', note:r.note||'', documents:r.documents||[] };
+}
+function activityToRow(a){
+  return { id:a.id, customer_id:_nn(a.customerId), deal_id:_nn(a.dealId), date:_nn(a.date), content:_nn(a.content) };
+}
+function rowToActivity(r){
+  return { id:r.id, customerId:r.customer_id, dealId:r.deal_id, date:r.date, content:r.content||'' };
+}
+function nextActionToRow(n){
+  return { id:n.id, customer_id:_nn(n.customerId), deal_id:_nn(n.dealId), text:_nn(n.text),
+    due_date:_nn(n.dueDate), done:!!n.done, created_at:_nn(n.createdAt) };
+}
+function rowToNextAction(r){
+  return { id:r.id, customerId:r.customer_id, dealId:r.deal_id, text:r.text||'', dueDate:r.due_date,
+    done:!!r.done, createdAt:r.created_at };
+}
+function meetingToRow(m){
+  return { id:m.id, customer_id:_nn(m.customerId), deal_id:_nn(m.dealId), title:_nn(m.title), date:_nn(m.date),
+    time:_nn(m.time), location:_nn(m.location), note:_nn(m.note), created_at:_nn(m.createdAt) };
+}
+function rowToMeeting(r){
+  return { id:r.id, customerId:r.customer_id, dealId:r.deal_id, title:r.title||'', date:r.date, time:r.time||'',
+    location:r.location||'', note:r.note||'', createdAt:r.created_at };
+}
+
+/* Đồng bộ 1 bảng: upsert toàn bộ record hiện có trong STATE, xoá record nào
+   không còn trong STATE (khớp với UX "import đè toàn bộ" đã có sẵn của app). */
+async function syncTable(table, rows, toRow){
+  const payload = rows.map(toRow);
+  if(payload.length){
+    const { error: upErr } = await supabaseClient.from(table).upsert(payload, { onConflict:'id' });
+    if(upErr) throw upErr;
+  }
+  const ids = rows.map(r=>r.id);
+  let delQuery = supabaseClient.from(table).delete();
+  delQuery = ids.length
+    ? delQuery.not('id', 'in', `(${ids.map(id=>`"${String(id).replace(/"/g,'')}"`).join(',')})`)
+    : delQuery.neq('id', '__none__');
+  const { error: delErr } = await delQuery;
+  if(delErr) throw delErr;
+}
+const MIDAS_LOGO_B64 = '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';
+
+const CUSTOMER_STATUSES = [
+  {id:'lead', label:'Lead', color:'#5b6b91', soft:'#eef1f6', hint:'Thông tin sơ bộ'},
+  {id:'mql', label:'MQL', color:'#2f5eff', soft:'#eaf0ff', hint:'Đủ thông tin'},
+  {id:'sql', label:'SQL', color:'#7c5cff', soft:'#f1edff', hint:'Tiềm năng triển khai'},
+  {id:'trienkhai', label:'Triển khai', color:'#0f7a53', soft:'#e7f8f1', hint:'Đã ký chốt'},
+  {id:'stop_fl', label:'Ngừng FL', color:'#b0262b', soft:'#fdecec', hint:'Không tiềm năng, không deal nữa'},
+];
+
+const DEAL_STAGES = [
+  {id:'lead', label:'Lead'},
+  {id:'contacted', label:'Contacted'},
+  {id:'qualified', label:'Qualified'},
+  {id:'meeting', label:'Meeting'},
+  {id:'proposal', label:'Proposal'},
+  {id:'negotiation', label:'Negotiation'},
+  {id:'won', label:'Won'},
+  {id:'lost', label:'Lost'},
+];
+
+const PRIORITIES = [
+  {id:'high', label:'High', emoji:'🔥'},
+  {id:'medium', label:'Medium', emoji:'⭐'},
+  {id:'low', label:'Low', emoji:'▫️'},
+];
+
+const NEXT_ACTIONS = ['Gọi lại khách','Gửi proposal','Gửi báo giá','Đặt lịch meeting','Follow-up proposal','Chờ khách phản hồi','Gửi hợp đồng','Chốt deal','Khác...'];
+
+const SOURCES = ['Giới thiệu','Website','Facebook','LinkedIn','Google Ads','Sự kiện','Cold outreach','Khác'];
+
+function statusMeta(id){ return CUSTOMER_STATUSES.find(s=>s.id===id) || CUSTOMER_STATUSES[0]; }
+function renderStatusSelect(c){
+  const sm = statusMeta(c.status);
+  return `<select class="status-select" style="background-color:${sm.soft};color:${sm.color}"
+    onclick="event.stopPropagation()"
+    onchange="event.stopPropagation(); updateCustomerStatusInline('${c.id}', this.value)">
+    ${CUSTOMER_STATUSES.map(s=>`<option value="${s.id}" ${c.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+  </select>`;
+}
+function updateCustomerStatusInline(customerId, newStatus){
+  const c = getCustomer(customerId);
+  if(!c || c.status===newStatus) return;
+  const oldLabel = statusMeta(c.status).label;
+  c.status = newStatus;
+  c.updatedAt = new Date().toISOString();
+  addActivity(customerId, null, `Đổi trạng thái khách hàng: ${oldLabel} → ${statusMeta(newStatus).label}`);
+  saveState();
+  showToast(`Đã chuyển trạng thái sang "${statusMeta(newStatus).label}"`);
+  render();
+}
+function stageMeta(id){ return DEAL_STAGES.find(s=>s.id===id) || DEAL_STAGES[0]; }
+function prioMeta(id){ return PRIORITIES.find(p=>p.id===id) || PRIORITIES[2]; }
+
+/* ---------------- Utilities ---------------- */
+function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return '—';
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function fmtDateTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d)) return '—';
+  return fmtDate(iso.slice(0,10)) + ' · ' + String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function fmtVND(n){
+  if(n === null || n === undefined || n === '') return '—';
+  n = Number(n);
+  if(isNaN(n)) return '—';
+  if(n >= 1000000000) return (n/1000000000).toFixed(n%1000000000===0?0:1).replace(/\.0$/,'') + ' tỷ';
+  if(n >= 1000000) return (n/1000000).toFixed(n%1000000===0?0:1).replace(/\.0$/,'') + ' tr';
+  return n.toLocaleString('vi-VN') + 'đ';
+}
+function fmtVNDFull(n){
+  if(n === null || n === undefined || n === '') return '—';
+  n = Number(n); if(isNaN(n)) return '—';
+  return n.toLocaleString('vi-VN') + ' VNĐ';
+}
+function daysDiff(iso){ // positive = future, negative = past, from today
+  if(!iso) return null;
+  const d = new Date(iso+'T00:00:00'), t = new Date(todayISO()+'T00:00:00');
+  return Math.round((d-t)/86400000);
+}
+function toISODate(d){ return d.toISOString().slice(0,10); }
+function buildWeekBuckets(n){
+  const now = new Date();
+  const dow = now.getDay() || 7; // 1=Mon..7=Sun
+  const monday = new Date(now); monday.setDate(now.getDate() - dow + 1);
+  const buckets = [];
+  for(let i=n-1;i>=0;i--){
+    const start = new Date(monday); start.setDate(monday.getDate() - i*7);
+    const end = new Date(start); end.setDate(start.getDate()+6);
+    buckets.push({
+      label: `${String(start.getDate()).padStart(2,'0')}/${String(start.getMonth()+1).padStart(2,'0')}`,
+      sub: `Tuần ${String(start.getDate()).padStart(2,'0')}/${String(start.getMonth()+1).padStart(2,'0')} – ${String(end.getDate()).padStart(2,'0')}/${String(end.getMonth()+1).padStart(2,'0')}`,
+      start: toISODate(start), end: toISODate(end),
+    });
+  }
+  return buckets;
+}
+function buildMonthBuckets(n){
+  const now = new Date();
+  const buckets = [];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const start = new Date(d.getFullYear(), d.getMonth(), 1);
+    const end = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    buckets.push({
+      label: `T${d.getMonth()+1}/${d.getFullYear()}`,
+      sub: `Tháng ${d.getMonth()+1}/${d.getFullYear()}`,
+      start: toISODate(start), end: toISODate(end),
+    });
+  }
+  return buckets;
+}
+function countLeadsInBuckets(buckets){
+  return buckets.map(b => STATE.customers.filter(c=>{
+    const cd = (c.createdAt||'').slice(0,10);
+    return cd && cd >= b.start && cd <= b.end;
+  }).length);
+}
+function escapeHtml(str){
+  if(str===null||str===undefined) return '';
+  return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escAttr(str){ return escapeHtml(str).replace(/`/g,'&#96;'); }
+
+/* ---------------- State ---------------- */
+let STATE = { customers: [], deals: [], activities: [], nextActions: [], meetings: [] };
+let UI = {
+  view: 'dashboard',
+  search: '',
+  custFilters: { status:'', owner:'', service:'', followup:'', timeRange:'' },
+  pipelineFilters: { owner:'', priority:'' },
+  detailCustomerId: null,
+  detailTab: 'info',
+  detailDealId: null,
+  dealDetailTab: 'journey',
+  leadReportPeriod: 'week',
+  exportScope: 'all',
+  calendarYear: new Date().getFullYear(),
+  calendarMonthIdx: new Date().getMonth(),
+  sidebarOpen: false,
+  dateFilterOpen: false,
+};
+
+async function loadState(){
+  if(!supabaseClient){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ STATE = JSON.parse(raw); return true; }
+    }catch(e){ console.error('load error', e); }
+    return false;
+  }
+  try{
+    const [cRes, dRes, aRes, nRes, mRes] = await Promise.all([
+      supabaseClient.from('customers').select('*'),
+      supabaseClient.from('deals').select('*'),
+      supabaseClient.from('activities').select('*'),
+      supabaseClient.from('next_actions').select('*'),
+      supabaseClient.from('meetings').select('*'),
+    ]);
+    for(const r of [cRes,dRes,aRes,nRes,mRes]) if(r.error) throw r.error;
+    STATE = {
+      customers: cRes.data.map(rowToCustomer),
+      deals: dRes.data.map(rowToDeal),
+      activities: aRes.data.map(rowToActivity),
+      nextActions: nRes.data.map(rowToNextAction),
+      meetings: mRes.data.map(rowToMeeting),
+    };
+    return true;
+  }catch(e){
+    console.error('load error', e);
+    showToast('Không thể tải dữ liệu từ máy chủ. Kiểm tra kết nối mạng / cấu hình Supabase.', true);
+    return false;
+  }
+}
+
+let _savingState = false, _savePending = false;
+async function saveState(){
+  if(!supabaseClient){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    }catch(e){ console.error('save error', e); showToast('Không thể lưu dữ liệu (bộ nhớ đầy?)', true); }
+    return;
+  }
+  // Full-sync toàn bộ 5 bảng theo đúng thứ tự để tránh vi phạm foreign key
+  // (customers trước, rồi deals, rồi activities/next_actions/meetings).
+  // Gộp các lượt gọi liên tiếp lại thành 1 lượt sync mới nhất (tránh spam request).
+  if(_savingState){ _savePending = true; return; }
+  _savingState = true;
+  try{
+    do{
+      _savePending = false;
+      await syncTable('customers', STATE.customers, customerToRow);
+      await syncTable('deals', STATE.deals, dealToRow);
+      await Promise.all([
+        syncTable('activities', STATE.activities, activityToRow),
+        syncTable('next_actions', STATE.nextActions, nextActionToRow),
+        syncTable('meetings', STATE.meetings, meetingToRow),
+      ]);
+    } while(_savePending);
+  }catch(e){
+    console.error('save error', e);
+    showToast('Không thể lưu dữ liệu lên máy chủ. Thử lại sau.', true);
+  }finally{
+    _savingState = false;
+  }
+}
+
+function getCustomer(id){ return STATE.customers.find(c=>c.id===id); }
+function getDeal(id){ return STATE.deals.find(d=>d.id===id); }
+function dealsOf(customerId){ return STATE.deals.filter(d=>d.customerId===customerId); }
+function validDeals(){ return STATE.deals.filter(d=>!!getCustomer(d.customerId)); }
+function activitiesOf(customerId){ return STATE.activities.filter(a=>a.customerId===customerId).sort((a,b)=> b.date.localeCompare(a.date)); }
+function owners(){ return [...new Set(STATE.customers.map(c=>c.owner).filter(Boolean))]; }
+function services(){ return [...new Set(STATE.deals.map(d=>d.service).filter(Boolean))]; }
+
+function addActivity(customerId, dealId, text){
+  STATE.activities.push({ id: uid(), customerId, dealId: dealId||null, date: new Date().toISOString(), content: text });
+}
+
+/* ---------------- Next actions (freeform, per customer) ---------------- */
+function nextActionsOf(customerId){
+  return STATE.nextActions.filter(n=>n.customerId===customerId)
+    .sort((a,b)=> (a.done - b.done) || (a.dueDate||'9999-99-99').localeCompare(b.dueDate||'9999-99-99') || a.createdAt.localeCompare(b.createdAt));
+}
+function allPendingNextActions(){
+  return STATE.nextActions.filter(n=>!n.done && getCustomer(n.customerId))
+    .sort((a,b)=> (a.dueDate||'9999-99-99').localeCompare(b.dueDate||'9999-99-99'));
+}
+function addNextActionForCustomer(customerId){
+  const textEl = document.getElementById('na_text');
+  const text = textEl.value.trim();
+  if(!text) return;
+  const dueDate = document.getElementById('na_due').value || null;
+  const dealSel = document.getElementById('na_deal');
+  const dealId = dealSel ? (dealSel.value || null) : null;
+  STATE.nextActions.push({ id: uid(), customerId, dealId, text, dueDate, done:false, createdAt: new Date().toISOString() });
+  addActivity(customerId, dealId, `Thêm next action: ${text}`);
+  const c = getCustomer(customerId); if(c) c.updatedAt = new Date().toISOString();
+  saveState();
+  showToast('Đã thêm next action');
+  renderCustomerDetailIfOpen(true);
+}
+function toggleNextActionDone(naId){
+  const na = STATE.nextActions.find(n=>n.id===naId);
+  if(!na) return;
+  na.done = !na.done;
+  saveState();
+  renderCustomerDetailIfOpen(true);
+}
+function toggleNextActionDoneGlobal(naId){
+  const na = STATE.nextActions.find(n=>n.id===naId);
+  if(!na) return;
+  na.done = !na.done;
+  saveState();
+  render();
+}
+function deleteNextAction(naId){
+  STATE.nextActions = STATE.nextActions.filter(n=>n.id!==naId);
+  saveState();
+  showToast('Đã xoá next action');
+  renderCustomerDetailIfOpen(true);
+}
+
+/* ---------------- Meetings / Calendar ---------------- */
+function meetingsOn(dateStr){ return STATE.meetings.filter(m=>m.date===dateStr).sort((a,b)=>(a.time||'').localeCompare(b.time||'')); }
+function upcomingMeetings(limit){
+  const t = todayISO();
+  return STATE.meetings.filter(m=>m.date>=t && getCustomer(m.customerId))
+    .sort((a,b)=> (a.date+(a.time||'')).localeCompare(b.date+(b.time||'')))
+    .slice(0, limit||200);
+}
+function getMeeting(id){ return STATE.meetings.find(m=>m.id===id); }
+
+/* ---------------- Seed data ---------------- */
+function seedData(){
+  const c1 = uid(), c2 = uid(), c3 = uid(), c4 = uid(), c5 = uid();
+  const now = todayISO();
+  const inDays = n => { const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+
+  STATE.customers = [
+    { id:c1, name:'Công ty ABC', contact:'Nguyễn Văn A', position:'Giám đốc Marketing', phone:'0901 234 567', email:'a.nguyen@abc.com.vn', website:'https://abc.com.vn', industry:'Bất động sản', source:'Giới thiệu', owner:'Leon', note:'Khách hàng thân thiết, quan tâm SEO dài hạn.', status:'sql', createdAt: inDays(-40), updatedAt: inDays(-2) },
+    { id:c2, name:'Công ty XYZ', contact:'Trần Thị B', position:'CEO', phone:'0912 345 678', email:'b.tran@xyz.vn', website:'https://xyz.vn', industry:'F&B', source:'Website', owner:'Leon', note:'Cần website mới trước Tết.', status:'sql', createdAt: inDays(-25), updatedAt: inDays(-1) },
+    { id:c3, name:'Công ty DEF', contact:'Lê Văn C', position:'Trưởng phòng Digital', phone:'0987 654 321', email:'c.le@def.com', website:'https://def.com', industry:'Giáo dục', source:'LinkedIn', owner:'Mai', note:'Ngân sách lớn, ra quyết định nhanh.', status:'sql', createdAt: inDays(-15), updatedAt: inDays(0) },
+    { id:c4, name:'Công ty GHI', contact:'Phạm Thị D', position:'Marketing Manager', phone:'0933 222 111', email:'d.pham@ghi.vn', website:'https://ghi.vn', industry:'Thương mại điện tử', source:'Sự kiện', owner:'Mai', note:'Đang so sánh 3 agency.', status:'mql', createdAt: inDays(-10), updatedAt: inDays(-3) },
+    { id:c5, name:'Công ty JKL', contact:'Hoàng Văn E', position:'Founder', phone:'0977 888 999', email:'e.hoang@jkl.vn', website:'', industry:'SaaS', source:'Cold outreach', owner:'Leon', note:'Mới liên hệ, chưa rõ nhu cầu.', status:'lead', createdAt: inDays(-2), updatedAt: inDays(-2) },
+  ];
+
+  STATE.deals = [
+    { id:uid(), customerId:c1, name:'SEO Website tổng thể', service:'SEO', value:300000000, owner:'Leon', startDate:inDays(-35), deadline:inDays(20), nextFollowUp:inDays(-1), priority:'high', dealStage:'negotiation', probability:70, nextAction:'Gửi hợp đồng', note:'Đã thống nhất phạm vi, chờ ký.' },
+    { id:uid(), customerId:c1, name:'Thiết kế lại Website', service:'Website', value:150000000, owner:'Leon', startDate:inDays(-30), deadline:inDays(45), nextFollowUp:inDays(3), priority:'medium', dealStage:'proposal', probability:50, nextAction:'Follow-up proposal', note:'Đã gửi proposal 20/08.' },
+    { id:uid(), customerId:c1, name:'Chạy Google Ads', service:'Google Ads', value:100000000, owner:'Leon', startDate:inDays(-10), deadline:inDays(60), nextFollowUp:inDays(7), priority:'low', dealStage:'lead', probability:20, nextAction:'Gọi lại khách', note:'' },
+    { id:uid(), customerId:c2, name:'Website – XYZ F&B', service:'Website', value:150000000, owner:'Leon', startDate:inDays(-20), deadline:inDays(15), nextFollowUp:inDays(-3), priority:'high', dealStage:'meeting', probability:60, nextAction:'Đặt lịch meeting', note:'Cần chốt trước Tết.' },
+    { id:uid(), customerId:c3, name:'Digital Marketing tổng thể', service:'Digital Marketing', value:500000000, owner:'Mai', startDate:inDays(-12), deadline:inDays(10), nextFollowUp:inDays(0), priority:'high', dealStage:'proposal', probability:65, nextAction:'Gửi báo giá', note:'Khách yêu cầu báo giá chi tiết theo tháng.' },
+    { id:uid(), customerId:c4, name:'SEO + GEO Combo', service:'SEO + GEO', value:700000000, owner:'Mai', startDate:inDays(-8), deadline:inDays(30), nextFollowUp:inDays(-2), priority:'high', dealStage:'proposal', probability:55, nextAction:'Follow-up proposal', note:'So sánh với 2 agency khác.' },
+    { id:uid(), customerId:c5, name:'Tư vấn SEO ban đầu', service:'SEO', value:60000000, owner:'Leon', startDate:inDays(-2), deadline:inDays(40), nextFollowUp:inDays(2), priority:'low', dealStage:'lead', probability:15, nextAction:'Gọi lại khách', note:'' },
+  ];
+
+  const d1 = STATE.deals[0].id, d2 = STATE.deals[1].id, d4 = STATE.deals[3].id;
+  STATE.activities = [
+    { id:uid(), customerId:c1, dealId:d1, date:new Date(Date.now()-14*86400000).toISOString(), content:'Gửi proposal SEO tổng thể cho khách.' },
+    { id:uid(), customerId:c1, dealId:d1, date:new Date(Date.now()-11*86400000).toISOString(), content:'Follow-up qua điện thoại, khách yêu cầu điều chỉnh ngân sách.' },
+    { id:uid(), customerId:c1, dealId:d1, date:new Date(Date.now()-8*86400000).toISOString(), content:'Khách phản hồi cần điều chỉnh budget, đã gửi lại báo giá mới.' },
+    { id:uid(), customerId:c1, dealId:d1, date:new Date(Date.now()-2*86400000).toISOString(), content:'Khách đồng ý điều khoản chính, chuẩn bị hợp đồng.' },
+    { id:uid(), customerId:c1, dealId:d2, date:new Date(Date.now()-6*86400000).toISOString(), content:'Gửi concept thiết kế website mới, chờ phản hồi.' },
+    { id:uid(), customerId:c2, dealId:d4, date:new Date(Date.now()-9*86400000).toISOString(), content:'Meeting đầu tiên trao đổi yêu cầu website.' },
+    { id:uid(), customerId:c2, dealId:d4, date:new Date(Date.now()-3*86400000).toISOString(), content:'Gửi wireframe sơ bộ, khách yêu cầu thêm mục blog.' },
+  ];
+
+  STATE.nextActions = STATE.deals
+    .filter(d=>d.nextAction && !['won','lost'].includes(d.dealStage))
+    .map(d=>({ id: uid(), customerId: d.customerId, dealId: d.id, text: d.nextAction, dueDate: d.nextFollowUp||null, done:false, createdAt: new Date().toISOString() }));
+
+  STATE.meetings = [
+    { id:uid(), customerId:c1, dealId:d1, title:'Ký hợp đồng SEO tổng thể', date:inDays(1), time:'10:00', location:'Văn phòng khách hàng', note:'Mang theo hợp đồng bản in.', createdAt:new Date().toISOString() },
+    { id:uid(), customerId:c2, dealId:d4, title:'Trình bày wireframe website', date:inDays(2), time:'14:30', location:'Google Meet', note:'', createdAt:new Date().toISOString() },
+    { id:uid(), customerId:c3, dealId:null, title:'Gặp gỡ trao đổi ngân sách', date:inDays(4), time:'09:30', location:'Cafe The Coffee House', note:'Khách quyết định nhanh, chuẩn bị kỹ báo giá.', createdAt:new Date().toISOString() },
+  ];
+}
+
+function isCompletelyEmpty(){
+  return !STATE.customers.length && !STATE.deals.length && !STATE.activities.length
+    && !STATE.nextActions.length && !STATE.meetings.length;
+}
+async function initApp(){
+  const app = document.getElementById('app');
+  app.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--ink-soft);font-weight:600;font-size:13px">Đang tải dữ liệu…</div>`;
+  const ok = await loadState();
+  if(!STATE.activities) STATE.activities = [];
+  if(!STATE.nextActions) STATE.nextActions = [];
+  if(!STATE.meetings) STATE.meetings = [];
+  // Chỉ seed dữ liệu mẫu khi thực sự chưa có gì (lần đầu khởi tạo database/local storage).
+  if(ok && isCompletelyEmpty()){ seedData(); saveState(); }
+  else if(!ok && !supabaseClient){ seedData(); saveState(); }
+  render();
+}
+
+/* ---------------- Toast ---------------- */
+let toastTimer = null;
+function showToast(msg, isError){
+  let el = document.getElementById('toast');
+  if(el) el.remove();
+  el = document.createElement('div');
+  el.id = 'toast';
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.innerHTML = (isError ? ICONS.alert : ICONS.check) + '<span>'+escapeHtml(msg)+'</span>';
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.remove(); }, 2600);
+}
+
+/* ---------------- Follow-up / alert calculations ---------------- */
+function followupBuckets(){
+  const overdue = [], today = [], soon = [];
+  validDeals().forEach(d=>{
+    if(['won','lost'].includes(d.dealStage)) return;
+    const diff = daysDiff(d.nextFollowUp);
+    if(diff === null) return;
+    if(diff < 0) overdue.push(d);
+    else if(diff === 0) today.push(d);
+    else if(diff <= 3) soon.push(d);
+  });
+  return {overdue, today, soon};
+}
+function deadlineSoonDeals(days){
+  return validDeals().filter(d=>{
+    if(['won','lost'].includes(d.dealStage)) return false;
+    const diff = daysDiff(d.deadline);
+    return diff !== null && diff >= 0 && diff <= days;
+  });
+}
+function staleHighValueDeals(){
+  // High value, no follow-up date set in next 5 days and not updated recently (proxy: nextFollowUp overdue or empty)
+  return validDeals().filter(d=>{
+    if(['won','lost'].includes(d.dealStage)) return false;
+    if(!d.value || d.value < 200000000) return false;
+    const diff = daysDiff(d.nextFollowUp);
+    return diff === null || diff < 0;
+  });
+}
+
+/* ---------------- Sidebar ---------------- */
+function renderSidebar(){
+  const fb = followupBuckets();
+  const alertCount = fb.overdue.length + fb.today.length;
+  const items = [
+    {id:'dashboard', label:'Dashboard', icon:ICONS.dashboard},
+    {id:'customers', label:'Customers', icon:ICONS.customers, badge: STATE.customers.length},
+    {id:'pipeline', label:'Pipeline', icon:ICONS.pipeline, badge: validDeals().filter(d=>!['won','lost'].includes(d.dealStage)).length},
+    {id:'followup', label:'Follow-up', icon:ICONS.followup, badge: alertCount || null, badgeAlert:true},
+    {id:'calendar', label:'Lịch hẹn', icon:ICONS.calendar, badge: upcomingMeetings().length || null},
+    {id:'reports', label:'Reports', icon:ICONS.reports},
+    {id:'settings', label:'Settings', icon:ICONS.settings},
+  ];
+  return `
+  <div class="sidebar ${UI.sidebarOpen?'open':''}" id="sidebar">
+    <div class="brand">
+      <img src="data:image/png;base64,${MIDAS_LOGO_B64}" class="brand-logo" alt="Midas Agency">
+      <span class="brand-tag">CRM Mini · v1.0</span>
+    </div>
+    <nav class="nav">
+      ${items.map(it=>`
+        <button class="nav-item ${UI.view===it.id?'active':''}" onclick="setView('${it.id}')">
+          ${it.icon}<span>${it.label}</span>
+          ${it.badge ? `<span class="nav-badge" ${it.badgeAlert? '':'style="background:var(--blue-glass);color:var(--blue-deep)"'}>${it.badge}</span>` : ''}
+        </button>
+      `).join('')}
+    </nav>
+    <div class="sidebar-foot">
+      <button class="nav-item" onclick="exportJSON()">${ICONS.download}<span>Export dữ liệu</span></button>
+      <button class="nav-item" onclick="document.getElementById('importFileInput').click()">${ICONS.upload}<span>Import dữ liệu</span></button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- App shell / router ---------------- */
+function setView(v){ UI.view = v; UI.sidebarOpen=false; render(); }
+
+function render(){
+  const app = document.getElementById('app');
+  let content = '';
+  if(UI.view==='dashboard') content = renderDashboard();
+  else if(UI.view==='customers') content = renderCustomers();
+  else if(UI.view==='pipeline') content = renderPipeline();
+  else if(UI.view==='followup') content = renderFollowup();
+  else if(UI.view==='calendar') content = renderCalendar();
+  else if(UI.view==='reports') content = renderReports();
+  else if(UI.view==='settings') content = renderSettings();
+
+  app.innerHTML = `
+    ${renderSidebar()}
+    ${UI.sidebarOpen ? `<div class="mobile-backdrop" onclick="UI.sidebarOpen=false; render()"></div>` : ''}
+    <div class="main ${UI.view==='dashboard'?'main-dashboard-bg':''}">
+      <div class="topbar">
+        <button class="mobile-menu-btn" onclick="UI.sidebarOpen=!UI.sidebarOpen; render()">${ICONS.menu}</button>
+        <div>
+          <h1>${viewTitle()}</h1>
+          <div class="topbar-sub">${viewSub()}</div>
+        </div>
+        <div class="topbar-actions">${viewActions()}</div>
+      </div>
+      ${content}
+    </div>
+    <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="handleImportFile(event)">
+  `;
+  if(UI.view==='reports') setTimeout(renderCharts, 30);
+  if(UI.view==='dashboard') setTimeout(renderDashboardLeadChart, 30);
+}
+
+function viewTitle(){
+  return {dashboard:'Dashboard', customers:'Customers', pipeline:'Pipeline', followup:'Follow-up', calendar:'Lịch hẹn', reports:'Reports', settings:'Settings'}[UI.view];
+}
+function viewSub(){
+  const d = new Date();
+  const dateStr = d.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+  return {
+    dashboard:`Tổng quan pipeline · ${dateStr}`,
+    customers:`${STATE.customers.length} khách hàng / đối tác`,
+    pipeline:`${validDeals().filter(d=>!['won','lost'].includes(d.dealStage)).length} deal đang mở`,
+    followup:'Không để sót lịch liên hệ',
+    calendar:`${upcomingMeetings().length} lịch hẹn sắp tới`,
+    reports:'Số liệu & biểu đồ pipeline',
+    settings:'Import / Export / Cấu hình',
+  }[UI.view];
+}
+function viewActions(){
+  if(UI.view==='dashboard') return `<button class="btn btn-primary" onclick="openCustomerModal()">${ICONS.plus}Thêm lead mới</button>`;
+  if(UI.view==='customers') return `<div style="display:flex;gap:8px"><button class="btn" onclick="openBulkImportModal()">${ICONS.upload}Nhập nhanh nhiều lead</button><button class="btn btn-primary" onclick="openCustomerModal()">${ICONS.plus}Thêm khách hàng</button></div>`;
+  if(UI.view==='pipeline') return `<button class="btn btn-primary" onclick="openDealModal()">${ICONS.plus}Thêm deal</button>`;
+  if(UI.view==='calendar') return `<button class="btn btn-primary" onclick="openMeetingModal()">${ICONS.plus}Đặt lịch meeting</button>`;
+  return '';
+}
+
+/* ================= DASHBOARD ================= */
+function renderDashboard(){
+  const openDeals = validDeals().filter(d=>!['won','lost'].includes(d.dealStage));
+  const wonDeals = validDeals().filter(d=>d.dealStage==='won');
+  const lostDeals = validDeals().filter(d=>d.dealStage==='lost');
+  const totalOpenValue = openDeals.reduce((s,d)=>s+(Number(d.value)||0),0);
+  const totalWonValue = wonDeals.reduce((s,d)=>s+(Number(d.value)||0),0);
+  const fb = followupBuckets();
+  const hotCount = STATE.customers.filter(c=>c.status==='sql').length;
+  const potentialCount = STATE.customers.filter(c=>['sql','trienkhai'].includes(c.status)).length;
+  const newCount = STATE.customers.filter(c=>{ const dd=daysDiff((c.createdAt||'').slice(0,10)); return dd!==null && dd>=-7 && dd<=0; }).length;
+  const deadlineSoon = deadlineSoonDeals(7);
+  const staleHigh = staleHighValueDeals();
+  const pendingNA = allPendingNextActions();
+  const meetingsToday = meetingsOn(todayISO());
+  const meetingsNext3 = upcomingMeetings(50).filter(m=> m.date !== todayISO() && daysDiff(m.date) <= 3);
+
+  const kpis = [
+    {label:'Tổng khách hàng', value: STATE.customers.length, icon:ICONS.users, cls:'', foot:`${newCount} khách mới (7 ngày)`},
+    {label:'Khách tiềm năng / SQL', value: potentialCount, icon:ICONS.bolt, cls:'violet', foot:`${hotCount} khách SQL`},
+    {label:'Deal đang mở', value: `${openDeals.length} · ${fmtVND(totalOpenValue)}`, icon:ICONS.coin, cls:'green', foot:'Tổng giá trị pipeline'},
+    {label:'Đã chốt', value: `${wonDeals.length} · ${fmtVND(totalWonValue)}`, icon:ICONS.flag, cls:'amber', foot:`${lostDeals.length} deal thất bại`},
+  ];
+
+  return `
+  <div id="leadReportCard">${renderLeadReportCard()}</div>
+
+  <div class="kpi-grid">
+    ${kpis.map(k=>`
+      <div class="kpi-card">
+        <div class="kpi-top"><div class="kpi-icon ${k.cls}">${k.icon}</div></div>
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}</div>
+        <div class="kpi-foot">${k.foot}</div>
+      </div>`).join('')}
+  </div>
+
+  <div class="alert-strip">
+    <button class="alert-pill red" onclick="goFollowup('overdue')"><span class="dot"></span>🔴 <span class="count">${fb.overdue.length}</span> khách hàng quá hạn follow-up</button>
+    <button class="alert-pill amber" onclick="goFollowup('today')"><span class="dot"></span>🟡 <span class="count">${fb.today.length}</span> khách cần follow-up hôm nay</button>
+    <button class="alert-pill green" onclick="setView('pipeline')"><span class="dot"></span>🟢 <span class="count">${openDeals.filter(d=>d.dealStage==='negotiation').length}</span> deal đang đàm phán</button>
+    ${deadlineSoon.length? `<button class="alert-pill amber" onclick="goFollowup('deadline')">⏰ <span class="count">${deadlineSoon.length}</span> deal sắp đến deadline (7 ngày)</button>`:''}
+    ${staleHigh.length? `<button class="alert-pill red" onclick="goFollowup('stale')">⚠️ <span class="count">${staleHigh.length}</span> deal giá trị cao chưa follow-up</button>`:''}
+    ${meetingsToday.length? `<button class="alert-pill green" onclick="setView('calendar')">${ICONS.calendar} <span class="count">${meetingsToday.length}</span> meeting hôm nay</button>`:''}
+    ${meetingsNext3.length? `<button class="alert-pill amber" onclick="setView('calendar')">${ICONS.calendar} <span class="count">${meetingsNext3.length}</span> meeting trong 3 ngày tới</button>`:''}
+  </div>
+
+  <div class="section-head"><h3>Lịch hẹn sắp tới</h3><span class="see-all" style="cursor:pointer" onclick="setView('calendar')">Xem tất cả ${ICONS.arrowRight}</span></div>
+  ${renderDashboardMeetingsPanel()}
+
+  <div class="dash-grid">
+    <div>
+      <div class="section-head"><h3>Deal cần chú ý</h3><span class="see-all" style="cursor:pointer" onclick="setView('followup')">Xem tất cả ${ICONS.arrowRight}</span></div>
+      ${renderDealAttentionTable([...fb.overdue, ...fb.today].slice(0,6))}
+    </div>
+    <div>
+      <div class="section-head"><h3>Danh sách khách hàng</h3><span class="see-all" style="cursor:pointer" onclick="setView('customers')">Xem tất cả ${ICONS.arrowRight}</span></div>
+      ${renderRecentCustomers()}
+    </div>
+  </div>
+
+  <div class="section-head"><h3>Next Action cần làm <span class="mono" style="color:var(--ink-faint);font-weight:600;font-size:12px">(${pendingNA.length})</span></h3></div>
+  ${renderNextActionsPanel(pendingNA)}`;
+}
+
+function renderDashboardMeetingsPanel(){
+  const list = upcomingMeetings(5);
+  if(!list.length) return `<div class="card" style="margin-bottom:8px"><div class="empty-state">${ICONS.calendar}<b>Chưa có lịch hẹn nào sắp tới</b><span>Đặt lịch meeting để không bỏ lỡ buổi hẹn với khách.</span></div></div>`;
+  return `<div class="table-wrap" style="margin-bottom:8px"><table><thead><tr>
+    <th>Ngày</th><th>Giờ</th><th>Tiêu đề</th><th>Khách hàng</th>
+  </tr></thead><tbody>
+  ${list.map(mt=>{
+    const c = getCustomer(mt.customerId);
+    const isToday = mt.date===todayISO();
+    return `<tr class="clickable" onclick="setView('calendar')">
+      <td class="cell-sub mono" style="${isToday?'color:var(--blue-deep);font-weight:700':''}">${fmtDate(mt.date)}${isToday?' · Hôm nay':''}</td>
+      <td class="cell-sub mono">${escapeHtml(mt.time||'—')}</td>
+      <td class="cell-main">${escapeHtml(mt.title)}</td>
+      <td class="cell-sub">${escapeHtml(c?.name||'—')}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+function renderNextActionsPanel(items){
+  const list = (items||allPendingNextActions()).slice(0,8);
+  if(!list.length) return `<div class="card"><div class="empty-state">${ICONS.check}<b>Không có next action nào đang chờ</b><span>Thêm việc cần làm từ hồ sơ khách hàng.</span></div></div>`;
+  return `<div class="table-wrap"><table><thead><tr>
+    <th></th><th>Việc cần làm</th><th>Khách hàng</th><th>Hạn</th>
+  </tr></thead><tbody>
+  ${list.map(na=>{
+    const c = getCustomer(na.customerId);
+    const diff = na.dueDate ? daysDiff(na.dueDate) : null;
+    const overdue = diff!==null && diff<0;
+    return `<tr>
+      <td style="width:38px" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" style="padding:5px" onclick="toggleNextActionDoneGlobal('${na.id}')" title="Đánh dấu hoàn thành">
+        <span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border-strong);border-radius:5px"></span>
+      </button></td>
+      <td class="cell-main clickable" style="cursor:pointer" onclick="openCustomerDetail('${na.customerId}','next')">${escapeHtml(na.text)}</td>
+      <td class="cell-sub">${escapeHtml(c?.name||'—')}</td>
+      <td class="cell-sub mono" style="${overdue?'color:var(--red);font-weight:700':''}">${na.dueDate? fmtDate(na.dueDate)+(overdue?' · quá hạn':'') : '—'}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+function renderLeadReportCard(){
+  const period = UI.leadReportPeriod || 'week';
+  const buckets = period==='week' ? buildWeekBuckets(8) : buildMonthBuckets(6);
+  const counts = countLeadsInBuckets(buckets);
+  const last = counts[counts.length-1] || 0;
+  const prev = counts[counts.length-2] || 0;
+  const delta = last - prev;
+  const deltaPct = prev>0 ? Math.round((delta/prev)*100) : (last>0? 100 : 0);
+  const deltaTone = delta>0 ? 'green' : (delta<0 ? 'red' : '');
+  const deltaIcon = delta>0 ? '▲' : (delta<0 ? '▼' : '·');
+  const periodLabel = period==='week' ? 'tuần này' : 'tháng này';
+  const prevLabel = period==='week' ? 'tuần trước' : 'tháng trước';
+
+  const currentBucket = buckets[buckets.length-1];
+  const periodCustomers = STATE.customers.filter(c=>{
+    const cd=(c.createdAt||'').slice(0,10);
+    return cd && cd>=currentBucket.start && cd<=currentBucket.end;
+  });
+  const statusBreakdown = CUSTOMER_STATUSES.map(s=>({...s, count: periodCustomers.filter(c=>c.status===s.id).length}));
+
+  return `
+  <div class="chart-card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px">
+      <div>
+        <h4 style="margin-bottom:2px">Báo cáo lead theo ${period==='week'?'tuần':'tháng'}</h4>
+        <div style="font-size:11.5px;color:var(--ink-faint)">Số lead mới ghi nhận theo thời gian, phân loại theo trạng thái — theo dõi xu hướng tăng/giảm.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="chip-toggle ${period==='week'?'active':''}" style="${period==='week'?'background:var(--blue-glass);color:var(--blue-deep)':''}" onclick="setLeadReportPeriod('week')">Theo tuần</button>
+        <button class="chip-toggle ${period==='month'?'active':''}" style="${period==='month'?'background:var(--blue-glass);color:var(--blue-deep)':''}" onclick="setLeadReportPeriod('month')">Theo tháng</button>
+        <button class="btn btn-sm" onclick="exportLeadReportExcel()">${ICONS.download} Xuất Excel</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="kpi-value" style="font-size:22px">${last}</span>
+      <span style="font-size:12.5px;color:var(--ink-faint)">lead ${periodLabel}</span>
+      <span class="badge" style="background:${delta>0?'var(--green-soft)':delta<0?'var(--red-soft)':'var(--gray-soft)'};color:${delta>0?'#0f7a53':delta<0?'#b0262b':'var(--ink-faint)'}">
+        ${deltaIcon} ${delta>0?'+':''}${delta} (${delta>0?'+':''}${deltaPct}%) so với ${prevLabel}
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      ${statusBreakdown.map(s=>`<span class="badge" style="background:${s.soft};color:${s.color}"><span class="dot"></span>${s.label}: ${s.count}</span>`).join('')}
+    </div>
+    <canvas id="chartLeadReport" height="90"></canvas>
+  </div>`;
+}
+function refreshLeadReportCard(){
+  const el = document.getElementById('leadReportCard');
+  if(el) el.innerHTML = renderLeadReportCard();
+  renderDashboardLeadChart();
+}
+function setLeadReportPeriod(p){ UI.leadReportPeriod = p; refreshLeadReportCard(); }
+
+let DASHBOARD_CHART = null;
+function renderDashboardLeadChart(){
+  const canvas = document.getElementById('chartLeadReport');
+  if(!canvas || typeof Chart === 'undefined') return;
+  if(DASHBOARD_CHART){ DASHBOARD_CHART.destroy(); DASHBOARD_CHART = null; }
+  const period = UI.leadReportPeriod || 'week';
+  const buckets = period==='week' ? buildWeekBuckets(8) : buildMonthBuckets(6);
+  const counts = countLeadsInBuckets(buckets);
+  DASHBOARD_CHART = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels: buckets.map(b=>b.label),
+      datasets:[{ data: counts, backgroundColor: counts.map((v,i)=> i===counts.length-1 ? '#2f5eff' : 'rgba(47,94,255,0.32)'), borderRadius:6, maxBarThickness:30 }]
+    },
+    options:{
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title: (items)=> buckets[items[0].dataIndex].sub } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }
+    }
+  });
+}
+
+function exportLeadReportExcel(){
+  if(typeof XLSX === 'undefined'){ showToast('Không thể tải thư viện Excel. Kiểm tra kết nối mạng và thử lại.', true); return; }
+  const period = UI.leadReportPeriod || 'week';
+  const buckets = period==='week' ? buildWeekBuckets(8) : buildMonthBuckets(6);
+  const counts = countLeadsInBuckets(buckets);
+
+  const summaryRows = [[ period==='week' ? 'Tuần' : 'Tháng', 'Khoảng thời gian', 'Số lead mới']];
+  buckets.forEach((b,i)=> summaryRows.push([b.label, `${fmtDate(b.start)} - ${fmtDate(b.end)}`, counts[i]]));
+
+  const detailRows = [['Tên khách hàng','Người liên hệ','SĐT','Email','Trạng thái','Ngày vào lead','Người phụ trách','Nguồn']];
+  [...STATE.customers].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).forEach(c=>{
+    detailRows.push([c.name, c.contact||'', c.phone||'', c.email||'', statusMeta(c.status).label, fmtDate((c.createdAt||'').slice(0,10)), c.owner||'', c.source||'']);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{wch:14},{wch:24},{wch:14}];
+  const ws2 = XLSX.utils.aoa_to_sheet(detailRows);
+  ws2['!cols'] = [{wch:24},{wch:18},{wch:16},{wch:24},{wch:14},{wch:14},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, period==='week' ? 'Theo tuần' : 'Theo tháng');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Chi tiết khách hàng');
+  XLSX.writeFile(wb, `midas-crm-lead-report-${todayISO()}.xlsx`);
+  showToast('Đã xuất file Excel');
+}
+
+function goFollowup(bucket){
+  UI.view = 'followup';
+  UI.followupBucket = bucket;
+  render();
+}
+
+function renderDealAttentionTable(deals){
+  if(!deals.length) return `<div class="card"><div class="empty-state">${ICONS.check}<b>Không có deal nào cần follow-up gấp</b><span>Mọi thứ đang trong tầm kiểm soát.</span></div></div>`;
+  return `<div class="table-wrap"><table><thead><tr>
+    <th>Công ty / Dự án</th><th>Giá trị</th><th>Follow-up</th><th>Người phụ trách</th><th>Ưu tiên</th>
+  </tr></thead><tbody>
+  ${deals.map(d=>{
+    const c = getCustomer(d.customerId);
+    const diff = daysDiff(d.nextFollowUp);
+    const overdue = diff<0;
+    return `<tr class="clickable" onclick="openCustomerDetail('${c.id}')">
+      <td><div class="cell-main">${escapeHtml(c?.name||'—')}</div><div class="cell-sub">${escapeHtml(d.name)}</div></td>
+      <td class="cell-value">${fmtVND(d.value)}</td>
+      <td><span class="badge" style="background:${overdue?'var(--red-soft)':'var(--amber-soft)'};color:${overdue?'#b0262b':'#9a6712'}"><span class="dot"></span>${overdue? `Quá hạn ${Math.abs(diff)}d` : (diff===0?'Hôm nay':'Còn '+diff+'d')}</span></td>
+      <td>${escapeHtml(d.owner||'—')}</td>
+      <td class="badge-priority">${prioMeta(d.priority).emoji} ${prioMeta(d.priority).label}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+function renderRecentCustomers(){
+  const list = [...STATE.customers].sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||'')).slice(0,8);
+  if(!list.length) return renderEmptyCustomers();
+  return `<div class="table-wrap"><table><thead><tr><th>Khách hàng</th><th>Trạng thái</th><th>Ngày vào lead</th><th>Cập nhật</th></tr></thead><tbody>
+  ${list.map(c=>{
+    return `<tr class="clickable" onclick="openCustomerDetail('${c.id}')">
+      <td><div class="cell-main">${escapeHtml(c.name)}</div><div class="cell-sub">${escapeHtml(c.contact||'')}</div></td>
+      <td onclick="event.stopPropagation()">${renderStatusSelect(c)}</td>
+      <td class="cell-sub mono">${fmtDate((c.createdAt||'').slice(0,10))}</td>
+      <td class="cell-sub mono">${fmtDate((c.updatedAt||'').slice(0,10))}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+function renderEmptyCustomers(){
+  return `<div class="card"><div class="empty-state">${ICONS.users}<b>Chưa có khách hàng nào</b><span>Thêm khách hàng đầu tiên để bắt đầu theo dõi pipeline.</span>
+  <button class="btn btn-primary" style="margin-top:8px" onclick="openCustomerModal()">${ICONS.plus}Thêm khách hàng</button></div></div>`;
+}
+
+/* ================= CUSTOMERS ================= */
+function filteredCustomers(){
+  let list = [...STATE.customers];
+  const q = UI.search.trim().toLowerCase();
+  if(q){
+    list = list.filter(c=>{
+      const dealNames = dealsOf(c.id).map(d=>d.name+' '+d.service).join(' ').toLowerCase();
+      return [c.name,c.contact,c.phone,c.email].join(' ').toLowerCase().includes(q) || dealNames.includes(q);
+    });
+  }
+  const f = UI.custFilters;
+  if(f.status) list = list.filter(c=>c.status===f.status);
+  if(f.owner) list = list.filter(c=>c.owner===f.owner);
+  if(f.service) list = list.filter(c=> dealsOf(c.id).some(d=>d.service===f.service));
+  if(f.followup==='overdue') list = list.filter(c=> dealsOf(c.id).some(d=>!['won','lost'].includes(d.dealStage) && daysDiff(d.nextFollowUp)<0));
+  if(f.followup==='today') list = list.filter(c=> dealsOf(c.id).some(d=>!['won','lost'].includes(d.dealStage) && daysDiff(d.nextFollowUp)===0));
+  if(f.timeRange==='week' || f.timeRange==='month'){
+    const b = f.timeRange==='week' ? buildWeekBuckets(1)[0] : buildMonthBuckets(1)[0];
+    list = list.filter(c=>{ const cd=(c.createdAt||'').slice(0,10); return cd && cd>=b.start && cd<=b.end; });
+  } else if(f.timeRange==='custom' && (f.dateFrom || f.dateTo)){
+    list = list.filter(c=>{
+      const cd = (c.createdAt||'').slice(0,10);
+      if(!cd) return false;
+      if(f.dateFrom && cd < f.dateFrom) return false;
+      if(f.dateTo && cd > f.dateTo) return false;
+      return true;
+    });
+  }
+  return list.sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+}
+
+function dateFilterLabel(){
+  const f = UI.custFilters;
+  if(f.timeRange==='week') return 'Lead tuần này';
+  if(f.timeRange==='month') return 'Lead tháng này';
+  if(f.timeRange==='custom'){
+    if(f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)} – ${fmtDate(f.dateTo)}`;
+    if(f.dateFrom) return `Từ ${fmtDate(f.dateFrom)}`;
+    if(f.dateTo) return `Đến ${fmtDate(f.dateTo)}`;
+  }
+  return 'Tất cả thời gian';
+}
+
+function renderCustomers(){
+  return `<div id="customersViewRoot">${renderCustomersInner()}</div>`;
+}
+function renderCustomersInner(){
+  const own = owners(), svc = services();
+  const hasFilters = (UI.search||UI.custFilters.status||UI.custFilters.owner||UI.custFilters.service||UI.custFilters.followup||UI.custFilters.timeRange);
+  return `
+  <div class="filters-bar">
+    <div class="search-box" style="min-width:240px">${ICONS.search}<input placeholder="Tìm công ty, người liên hệ, SĐT, email, dự án..." value="${escAttr(UI.search)}" oninput="UI.search=this.value; renderCustomerListOnly()"></div>
+    <select class="select-chip" onchange="UI.custFilters.status=this.value; refreshCustomersView()">
+      <option value="">Tất cả trạng thái</option>
+      ${CUSTOMER_STATUSES.map(s=>`<option value="${s.id}" ${UI.custFilters.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+    </select>
+    <select class="select-chip" onchange="UI.custFilters.owner=this.value; refreshCustomersView()">
+      <option value="">Tất cả phụ trách</option>
+      ${own.map(o=>`<option value="${escAttr(o)}" ${UI.custFilters.owner===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
+    </select>
+    <select class="select-chip" onchange="UI.custFilters.service=this.value; refreshCustomersView()">
+      <option value="">Tất cả dịch vụ</option>
+      ${svc.map(s=>`<option value="${escAttr(s)}" ${UI.custFilters.service===s?'selected':''}>${escapeHtml(s)}</option>`).join('')}
+    </select>
+    <div class="date-filter-wrap">
+      <button class="select-chip" style="display:inline-flex;align-items:center;gap:6px" onclick="toggleDateFilterPanel(event)">
+        ${ICONS.calendar}<span>${dateFilterLabel()}</span><span style="font-size:9px;color:var(--ink-faint)">▾</span>
+      </button>
+      <div id="dateFilterPanel" class="date-filter-panel ${UI.dateFilterOpen?'':'hidden'}" onclick="event.stopPropagation()">
+        <div class="date-filter-presets">
+          <button class="chip-toggle ${!UI.custFilters.timeRange?'active':''}" onclick="applyDatePreset('')">Tất cả thời gian</button>
+          <button class="chip-toggle ${UI.custFilters.timeRange==='week'?'active':''}" onclick="applyDatePreset('week')">Lead tuần này</button>
+          <button class="chip-toggle ${UI.custFilters.timeRange==='month'?'active':''}" onclick="applyDatePreset('month')">Lead tháng này</button>
+        </div>
+        <div class="date-filter-divider">Hoặc chọn khoảng ngày</div>
+        <div class="date-filter-range">
+          <div class="form-field"><label>Từ ngày</label><input type="date" id="dateFilterFrom" value="${UI.custFilters.dateFrom||''}"></div>
+          <div class="form-field"><label>Đến ngày</label><input type="date" id="dateFilterTo" value="${UI.custFilters.dateTo||''}"></div>
+        </div>
+        <div class="date-filter-actions">
+          <button class="btn btn-ghost btn-sm" onclick="clearDateFilter()">Xoá</button>
+          <button class="btn btn-primary btn-sm" onclick="applyDateRange()">Áp dụng</button>
+        </div>
+      </div>
+    </div>
+    <button class="chip-toggle ${UI.custFilters.followup==='overdue'?'active':''}" onclick="toggleFollowupFilter('overdue')">${ICONS.alert} Quá hạn follow-up</button>
+    <button class="chip-toggle ${UI.custFilters.followup==='today'?'active':''}" onclick="toggleFollowupFilter('today')">${ICONS.clock} Follow-up hôm nay</button>
+    ${hasFilters ? `<button class="btn btn-ghost btn-sm" onclick="resetCustFilters()">${ICONS.x} Xoá lọc</button>` : ''}
+  </div>
+  <div id="customerListWrap">${renderCustomerTable(filteredCustomers())}</div>`;
+}
+function refreshCustomersView(){
+  const root = document.getElementById('customersViewRoot');
+  if(root) root.innerHTML = renderCustomersInner();
+}
+function toggleFollowupFilter(v){ UI.custFilters.followup = UI.custFilters.followup===v? '' : v; refreshCustomersView(); }
+function toggleDateFilterPanel(ev){
+  ev.stopPropagation();
+  UI.dateFilterOpen = !UI.dateFilterOpen;
+  refreshCustomersView();
+}
+function applyDatePreset(v){
+  UI.custFilters.timeRange = v;
+  UI.custFilters.dateFrom = '';
+  UI.custFilters.dateTo = '';
+  UI.dateFilterOpen = false;
+  refreshCustomersView();
+}
+function applyDateRange(){
+  const from = document.getElementById('dateFilterFrom').value;
+  const to = document.getElementById('dateFilterTo').value;
+  if(!from && !to){
+    UI.custFilters.timeRange = '';
+  } else {
+    UI.custFilters.timeRange = 'custom';
+    UI.custFilters.dateFrom = from;
+    UI.custFilters.dateTo = to;
+  }
+  UI.dateFilterOpen = false;
+  refreshCustomersView();
+}
+function clearDateFilter(){
+  UI.custFilters.timeRange = '';
+  UI.custFilters.dateFrom = '';
+  UI.custFilters.dateTo = '';
+  UI.dateFilterOpen = false;
+  refreshCustomersView();
+}
+document.addEventListener('click', (e)=>{
+  if(UI.dateFilterOpen && !e.target.closest('.date-filter-wrap')){
+    UI.dateFilterOpen = false;
+    refreshCustomersView();
+  }
+});
+function resetCustFilters(){ UI.search=''; UI.custFilters={status:'',owner:'',service:'',followup:'',timeRange:'',dateFrom:'',dateTo:''}; UI.dateFilterOpen=false; refreshCustomersView(); }
+function renderCustomerListOnly(){
+  const wrap = document.getElementById('customerListWrap');
+  if(wrap) wrap.innerHTML = renderCustomerTable(filteredCustomers());
+}
+
+function renderCustomerTable(list){
+  if(!STATE.customers.length) return renderEmptyCustomers();
+  if(!list.length) return `<div class="card"><div class="empty-state">${ICONS.search}<b>Không tìm thấy kết quả</b><span>Thử điều chỉnh bộ lọc hoặc từ khoá tìm kiếm.</span></div></div>`;
+  return `<div class="table-wrap"><table><thead><tr>
+    <th>Khách hàng</th><th>Liên hệ</th><th>Trạng thái</th><th>Deal</th><th>Tổng giá trị</th><th>Phụ trách</th><th>Ngày vào lead</th><th>Cập nhật</th><th></th>
+  </tr></thead><tbody>
+  ${list.map(c=>{
+    const cd = dealsOf(c.id);
+    const totalVal = cd.reduce((s,d)=>s+(Number(d.value)||0),0);
+    return `<tr class="clickable" onclick="openCustomerDetail('${c.id}')">
+      <td><div class="cell-main">${escapeHtml(c.name)}</div><div class="cell-sub">${escapeHtml(c.industry||'')}</div></td>
+      <td><div class="cell-main" style="font-weight:500">${escapeHtml(c.contact||'—')}</div><div class="cell-sub">${escapeHtml(c.phone||'')}</div></td>
+      <td onclick="event.stopPropagation()">${renderStatusSelect(c)}</td>
+      <td class="cell-sub">${cd.length} deal</td>
+      <td class="cell-value">${fmtVND(totalVal)}</td>
+      <td class="cell-sub">${escapeHtml(c.owner||'—')}</td>
+      <td class="cell-sub mono">${fmtDate((c.createdAt||'').slice(0,10))}</td>
+      <td class="cell-sub mono">${fmtDate((c.updatedAt||'').slice(0,10))}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="openCustomerModal('${c.id}')" title="Sửa">${ICONS.edit}</button>
+        <button class="btn btn-ghost btn-sm" onclick="confirmDeleteCustomer('${c.id}')" title="Xoá">${ICONS.trash}</button>
+      </td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+/* ================= PIPELINE (KANBAN) ================= */
+function filteredDeals(){
+  let list = [...validDeals()];
+  const q = UI.search.trim().toLowerCase();
+  if(q){
+    list = list.filter(d=>{
+      const c = getCustomer(d.customerId);
+      return [d.name,d.service,c?.name,c?.contact].join(' ').toLowerCase().includes(q);
+    });
+  }
+  const f = UI.pipelineFilters;
+  if(f.owner) list = list.filter(d=>d.owner===f.owner);
+  if(f.priority) list = list.filter(d=>d.priority===f.priority);
+  return list;
+}
+
+function renderPipeline(){
+  const list = filteredDeals();
+  const own = owners();
+  return `
+  <div class="filters-bar">
+    <div class="search-box" style="min-width:240px">${ICONS.search}<input placeholder="Tìm công ty, dự án, dịch vụ..." value="${escAttr(UI.search)}" oninput="UI.search=this.value; renderPipelineBoardOnly()"></div>
+    <select class="select-chip" onchange="UI.pipelineFilters.owner=this.value; renderPipelineBoardOnly()">
+      <option value="">Tất cả phụ trách</option>
+      ${own.map(o=>`<option value="${escAttr(o)}" ${UI.pipelineFilters.owner===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
+    </select>
+    <select class="select-chip" onchange="UI.pipelineFilters.priority=this.value; renderPipelineBoardOnly()">
+      <option value="">Tất cả ưu tiên</option>
+      ${PRIORITIES.map(p=>`<option value="${p.id}" ${UI.pipelineFilters.priority===p.id?'selected':''}>${p.emoji} ${p.label}</option>`).join('')}
+    </select>
+  </div>
+  <div id="kanbanWrap">${renderKanbanBoard(list)}</div>`;
+}
+function renderPipelineBoardOnly(){
+  const wrap = document.getElementById('kanbanWrap');
+  if(wrap) wrap.innerHTML = renderKanbanBoard(filteredDeals());
+}
+
+function renderKanbanBoard(list){
+  if(!validDeals().length){
+    return `<div class="card"><div class="empty-state">${ICONS.pipeline}<b>Chưa có deal nào</b><span>Thêm deal đầu tiên để bắt đầu theo dõi pipeline kinh doanh.</span>
+    <button class="btn btn-primary" style="margin-top:8px" onclick="openDealModal()">${ICONS.plus}Thêm deal</button></div></div>`;
+  }
+  const activeStages = DEAL_STAGES.filter(s=>s.id!=='lost');
+  const lostCards = list.filter(d=>d.dealStage==='lost');
+  const lostSum = lostCards.reduce((s,d)=>s+(Number(d.value)||0),0);
+
+  return `
+  <div class="kanban-wrap">
+    ${activeStages.map(stage=>{
+      const cards = list.filter(d=>d.dealStage===stage.id);
+      const sum = cards.reduce((s,d)=>s+(Number(d.value)||0),0);
+      const isWon = stage.id==='won';
+      return `
+      <div class="kanban-col ${isWon?'kanban-col-won':''}" data-stage="${stage.id}" ondragover="event.preventDefault(); this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event, '${stage.id}')">
+        <div class="kanban-col-head"><span class="title">${stage.label}</span><span class="count">${cards.length}</span></div>
+        <div class="kanban-col-sum">${fmtVND(sum)}</div>
+        <div class="kanban-cards">
+          ${cards.length? cards.map(d=>renderKanbanCard(d)).join('') : `<div style="text-align:center;color:var(--ink-faint);font-size:11.5px;padding:16px 4px;">Kéo thả deal vào đây</div>`}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="kanban-lost-zone" data-stage="lost" ondragover="event.preventDefault(); this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event, 'lost')">
+    <div class="kanban-lost-head">
+      <span>${ICONS.trash} <b>Lost</b> — kéo deal xuống đây khi mất deal</span>
+      <span class="mono" style="font-size:11.5px;color:var(--ink-faint)">${lostCards.length} deal · ${fmtVND(lostSum)}</span>
+    </div>
+    <div class="kanban-lost-cards">
+      ${lostCards.length? lostCards.map(d=>renderKanbanCard(d)).join('') : `<div class="kanban-lost-empty">Chưa có deal nào bị mất</div>`}
+    </div>
+  </div>`;
+}
+
+function renderKanbanCard(d){
+  const c = getCustomer(d.customerId);
+  const diff = daysDiff(d.nextFollowUp);
+  const overdue = diff!==null && diff<0 && !['won','lost'].includes(d.dealStage);
+  return `<div class="kcard" draggable="true" data-deal-id="${d.id}" ondragstart="handleDragStart(event,'${d.id}')" ondragend="this.classList.remove('dragging')" onclick="openDealDetail('${d.id}')">
+    <div class="company">${escapeHtml(c?.name||'—')}</div>
+    <div class="project">${escapeHtml(d.name)}</div>
+    <div class="value">${fmtVND(d.value)}</div>
+    <div class="kcard-foot">
+      <span class="kcard-owner">${escapeHtml(d.owner||'—')} ${d.nextFollowUp? '· '+fmtDate(d.nextFollowUp):''}</span>
+      <span class="badge-priority" style="${overdue?'color:var(--red)':''}">${prioMeta(d.priority).emoji}</span>
+    </div>
+  </div>`;
+}
+
+let dragDealId = null;
+function handleDragStart(ev, dealId){
+  dragDealId = dealId;
+  ev.target.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function handleDrop(ev, stageId){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag-over');
+  if(!dragDealId) return;
+  const deal = getDeal(dragDealId);
+  if(deal && deal.dealStage !== stageId){
+    const from = stageMeta(deal.dealStage).label;
+    deal.dealStage = stageId;
+    addActivity(deal.customerId, deal.id, `Deal "${deal.name}" chuyển từ ${from} sang ${stageMeta(stageId).label}.`);
+    const c = getCustomer(deal.customerId);
+    if(c) c.updatedAt = new Date().toISOString();
+    saveState();
+    showToast(`Đã cập nhật trạng thái deal sang "${stageMeta(stageId).label}"`);
+  }
+  dragDealId = null;
+  if(UI.view==='pipeline') renderPipelineBoardOnly();
+}
+
+/* ================= FOLLOW-UP ================= */
+function renderFollowup(){
+  const fb = followupBuckets();
+  const deadlineSoon = deadlineSoonDeals(7);
+  const staleHigh = staleHighValueDeals();
+  const bucket = UI.followupBucket;
+  const sections = [
+    {id:'overdue', title:'🔴 Quá hạn follow-up', list: fb.overdue, tone:'red'},
+    {id:'today', title:'🟡 Cần follow-up hôm nay', list: fb.today, tone:'amber'},
+    {id:'soon', title:'⏳ Follow-up trong 3 ngày tới', list: fb.soon, tone:'green'},
+    {id:'deadline', title:'⏰ Deal sắp đến deadline (7 ngày)', list: deadlineSoon, tone:'amber'},
+    {id:'stale', title:'⚠️ Deal giá trị cao chưa có follow-up gần đây', list: staleHigh, tone:'red'},
+  ];
+  return sections.map(s=>`
+    <div class="section-head"><h3>${s.title} <span class="mono" style="color:var(--ink-faint);font-weight:600;font-size:12px">(${s.list.length})</span></h3></div>
+    ${renderDealAttentionTable(s.list)}
+  `).join('');
+}
+
+/* ================= CALENDAR ================= */
+function renderCalendar(){
+  const y = UI.calendarYear, m = UI.calendarMonthIdx;
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay()+6)%7; // Monday=0 .. Sunday=6
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const monthLabel = `Tháng ${m+1}/${y}`;
+
+  let cells = '';
+  for(let i=0;i<startOffset;i++) cells += `<div class="cal-cell cal-empty"></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dayMeetings = meetingsOn(dateStr);
+    const isToday = dateStr === todayISO();
+    cells += `<div class="cal-cell ${isToday?'cal-today':''}" onclick="openDayMeetings('${dateStr}')">
+      <div class="cal-daynum">${day}</div>
+      ${dayMeetings.slice(0,2).map(mt=>`<div class="cal-chip">${mt.time? escapeHtml(mt.time)+' ':''}${escapeHtml(mt.title)}</div>`).join('')}
+      ${dayMeetings.length>2? `<div class="cal-more">+${dayMeetings.length-2} khác</div>`:''}
+    </div>`;
+  }
+
+  return `
+  <div class="card" style="padding:18px;margin-bottom:22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="shiftCalendarMonth(-1)">‹</button>
+        <h3 style="font-size:15px;min-width:120px;text-align:center">${monthLabel}</h3>
+        <button class="btn btn-ghost btn-sm" onclick="shiftCalendarMonth(1)">›</button>
+      </div>
+      <button class="btn btn-sm" onclick="goToCurrentMonth()">${ICONS.clock} Hôm nay</button>
+    </div>
+    <div class="cal-grid cal-head-row">
+      ${['T2','T3','T4','T5','T6','T7','CN'].map(d=>`<div class="cal-headcell">${d}</div>`).join('')}
+    </div>
+    <div class="cal-grid">${cells}</div>
+  </div>
+  <div class="section-head"><h3>Lịch hẹn sắp tới</h3></div>
+  ${renderUpcomingMeetingsList()}
+  `;
+}
+
+function shiftCalendarMonth(delta){
+  let m = UI.calendarMonthIdx + delta, y = UI.calendarYear;
+  if(m<0){ m=11; y--; } else if(m>11){ m=0; y++; }
+  UI.calendarMonthIdx = m; UI.calendarYear = y;
+  render();
+}
+function goToCurrentMonth(){
+  const now = new Date();
+  UI.calendarYear = now.getFullYear(); UI.calendarMonthIdx = now.getMonth();
+  render();
+}
+
+function renderUpcomingMeetingsList(){
+  const list = upcomingMeetings(30);
+  if(!list.length) return `<div class="card"><div class="empty-state">${ICONS.calendar}<b>Chưa có lịch hẹn nào sắp tới</b><span>Đặt lịch meeting với khách hàng để không bỏ lỡ buổi hẹn.</span>
+    <button class="btn btn-primary" style="margin-top:8px" onclick="openMeetingModal()">${ICONS.plus}Đặt lịch meeting</button></div></div>`;
+  return `<div class="table-wrap"><table><thead><tr>
+    <th>Ngày</th><th>Giờ</th><th>Tiêu đề</th><th>Khách hàng</th><th>Địa điểm</th><th></th>
+  </tr></thead><tbody>
+  ${list.map(mt=>{
+    const c = getCustomer(mt.customerId);
+    const isToday = mt.date===todayISO();
+    return `<tr class="clickable" onclick="openMeetingModal('${mt.id}')">
+      <td class="cell-sub mono" style="${isToday?'color:var(--blue-deep);font-weight:700':''}">${fmtDate(mt.date)}${isToday?' · Hôm nay':''}</td>
+      <td class="cell-sub mono">${escapeHtml(mt.time||'—')}</td>
+      <td class="cell-main">${escapeHtml(mt.title)}</td>
+      <td class="cell-sub">${escapeHtml(c?.name||'—')}</td>
+      <td class="cell-sub">${escapeHtml(mt.location||'—')}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="openMeetingModal('${mt.id}')" title="Sửa">${ICONS.edit}</button>
+        <button class="btn btn-ghost btn-sm" onclick="confirmDeleteMeeting('${mt.id}')" title="Xoá">${ICONS.trash}</button>
+      </td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+function openDayMeetings(dateStr){
+  const list = meetingsOn(dateStr);
+  openModal(`
+    <div class="modal-head"><h3>Lịch hẹn ngày ${fmtDate(dateStr)}</h3><button class="modal-close" onclick="closeModal()">${ICONS.x}</button></div>
+    <div class="modal-body">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-sm btn-primary" onclick="closeModal(); openMeetingModal(null, '${dateStr}')">${ICONS.plus} Thêm lịch hẹn</button>
+      </div>
+      ${list.length? list.map(mt=>{
+        const c = getCustomer(mt.customerId);
+        return `<div class="deal-mini-card clickable" style="cursor:pointer" onclick="openMeetingModal('${mt.id}')">
+          <div class="deal-mini-top">
+            <span class="name">${mt.time? escapeHtml(mt.time)+' · ':''}${escapeHtml(mt.title)}</span>
+          </div>
+          <div class="deal-mini-meta">
+            <span>${escapeHtml(c?.name||'—')}</span>
+            ${mt.location? `<span>${escapeHtml(mt.location)}</span>`:''}
+          </div>
+        </div>`;
+      }).join('') : `<div class="empty-state" style="padding:20px 10px">${ICONS.calendar}<b>Chưa có lịch hẹn ngày này</b></div>`}
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Đóng</button></div>
+  `);
+}
+
+/* ---- Meeting form ---- */
+function openMeetingModal(meetingId, presetDate){
+  const mt = meetingId ? getMeeting(meetingId) : null;
+  const isEdit = !!mt;
+  if(!STATE.customers.length){ showToast('Cần thêm khách hàng trước khi đặt lịch meeting', true); return; }
+  openModal(`
+    <div class="modal-head"><h3>${isEdit? 'Chỉnh sửa lịch hẹn' : 'Đặt lịch meeting'}</h3><button class="modal-close" onclick="closeModal()">${ICONS.x}</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full"><label>Tiêu đề *</label><input id="mt_title" value="${escAttr(mt?.title||'')}" placeholder="VD: Trình bày proposal SEO"></div>
+        <div class="form-field full"><label>Khách hàng *</label>
+          <select id="mt_customer" onchange="renderMeetingDealOptions(this.value)">${STATE.customers.map(c=>`<option value="${c.id}" ${mt?.customerId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+        </div>
+        <div class="form-field full" id="mt_deal_wrap"></div>
+        <div class="form-field"><label>Ngày *</label><input id="mt_date" type="date" value="${mt?.date || presetDate || todayISO()}"></div>
+        <div class="form-field"><label>Giờ</label><input id="mt_time" type="time" value="${mt?.time||''}"></div>
+        <div class="form-field full"><label>Địa điểm / Link</label><input id="mt_location" value="${escAttr(mt?.location||'')}" placeholder="Văn phòng khách hàng, Google Meet, Zoom..."></div>
+        <div class="form-field full"><label>Mục đích / Ghi chú</label><textarea id="mt_note" placeholder="VD: Trình bày proposal, chốt ngân sách, ký hợp đồng...">${escapeHtml(mt?.note||'')}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      ${isEdit? `<button class="btn btn-danger" style="margin-right:auto" onclick="confirmDeleteMeeting('${mt.id}')">${ICONS.trash} Xoá lịch hẹn</button>`:''}
+      <button class="btn" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveMeeting(${mt? `'${mt.id}'`:'null'})">${ICONS.check} ${isEdit?'Lưu thay đổi':'Đặt lịch'}</button>
+    </div>
+  `, 'modal-lg');
+  const initialCustomerId = mt?.customerId || document.getElementById('mt_customer')?.value;
+  renderMeetingDealOptions(initialCustomerId, mt?.dealId);
+  setTimeout(()=>document.getElementById('mt_title')?.focus(), 50);
+}
+
+function renderMeetingDealOptions(customerId, selectedDealId){
+  const wrap = document.getElementById('mt_deal_wrap');
+  if(!wrap) return;
+  const deals = customerId ? dealsOf(customerId).filter(d=>!['won','lost'].includes(d.dealStage)) : [];
+  wrap.innerHTML = `
+    <label>Deal liên quan (tuỳ chọn)</label>
+    <select id="mt_deal">
+      <option value="">Không gắn deal cụ thể</option>
+      ${deals.map(d=>`<option value="${d.id}" ${selectedDealId===d.id?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}
+    </select>`;
+}
+
+function saveMeeting(meetingId){
+  const title = document.getElementById('mt_title').value.trim();
+  const customerId = document.getElementById('mt_customer').value;
+  const date = document.getElementById('mt_date').value;
+  if(!title){ showToast('Vui lòng nhập tiêu đề buổi hẹn', true); return; }
+  if(!date){ showToast('Vui lòng chọn ngày hẹn', true); return; }
+  const payload = {
+    title, customerId, date,
+    time: document.getElementById('mt_time').value,
+    dealId: document.getElementById('mt_deal')?.value || null,
+    location: document.getElementById('mt_location').value.trim(),
+    note: document.getElementById('mt_note').value.trim(),
+  };
+  let isEdit = false;
+  if(meetingId){
+    isEdit = true;
+    Object.assign(getMeeting(meetingId), payload);
+    showToast('Đã cập nhật lịch hẹn');
+  } else {
+    const id = uid();
+    STATE.meetings.push({ id, ...payload, createdAt: new Date().toISOString() });
+    showToast('Đã đặt lịch meeting');
+  }
+
+  let noteText = `${isEdit? 'Cập nhật lịch hẹn' : 'Đặt lịch meeting'} "${title}" vào ${fmtDate(date)}${payload.time? ' lúc '+payload.time:''}`;
+  if(payload.location) noteText += ` tại ${payload.location}`;
+  noteText += '.';
+  if(payload.note) noteText += ` Mục đích: ${payload.note}`;
+  addActivity(customerId, payload.dealId, noteText);
+  const c = getCustomer(customerId); if(c) c.updatedAt = new Date().toISOString();
+  saveState();
+  closeModal();
+  render();
+}
+
+function confirmDeleteMeeting(meetingId){
+  const mt = getMeeting(meetingId);
+  openConfirmModal('Xoá lịch hẹn?', `Lịch hẹn "${mt.title}" sẽ bị xoá vĩnh viễn.`, ()=>{
+    STATE.meetings = STATE.meetings.filter(x=>x.id!==meetingId);
+    saveState(); closeModal(); render();
+    showToast('Đã xoá lịch hẹn');
+  });
+}
+
+/* ================= REPORTS ================= */
+function renderReports(){
+  const totalCustomers = STATE.customers.length;
+  const openDeals = validDeals().filter(d=>!['won','lost'].includes(d.dealStage));
+  const wonDeals = validDeals().filter(d=>d.dealStage==='won');
+  const lostDeals = validDeals().filter(d=>d.dealStage==='lost');
+  const totalOpenValue = openDeals.reduce((s,d)=>s+(Number(d.value)||0),0);
+  const winRate = (wonDeals.length+lostDeals.length)>0 ? Math.round(wonDeals.length/(wonDeals.length+lostDeals.length)*100) : 0;
+  const avgDealSize = validDeals().length ? Math.round(validDeals().reduce((s,d)=>s+(Number(d.value)||0),0)/validDeals().length) : 0;
+
+  const repKpis = [
+    {label:'Tổng khách hàng', value: totalCustomers, icon:ICONS.users, cls:''},
+    {label:'Giá trị pipeline mở', value: fmtVND(totalOpenValue), icon:ICONS.coin, cls:'green'},
+    {label:'Tỷ lệ chốt deal', value: `${winRate}%`, icon:ICONS.flag, cls:'amber'},
+    {label:'Giá trị deal trung bình', value: fmtVND(avgDealSize), icon:ICONS.bolt, cls:'violet'},
+  ];
+
+  return `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <button class="btn btn-primary" onclick="exportFullReportExcel()">${ICONS.download} Xuất báo cáo Excel</button>
+  </div>
+  <div class="kpi-grid" style="margin-bottom:20px">
+    ${repKpis.map(k=>`
+      <div class="kpi-card">
+        <div class="kpi-top"><div class="kpi-icon ${k.cls}">${k.icon}</div></div>
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}</div>
+      </div>`).join('')}
+  </div>
+  <div class="dash-grid" style="margin-bottom:16px">
+    <div class="chart-card">
+      <h4>Khách hàng theo trạng thái</h4>
+      <div class="chart-desc">Phân bổ toàn bộ khách hàng theo 4 mức đánh giá hiện tại.</div>
+      <canvas id="chartCustStatus" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Giá trị deal theo giai đoạn pipeline</h4>
+      <div class="chart-desc">Tổng giá trị deal đang nằm ở mỗi bước trong pipeline.</div>
+      <canvas id="chartDealStage" height="220"></canvas>
+    </div>
+  </div>
+  <div class="dash-grid">
+    <div class="chart-card">
+      <h4>Deal đang mở theo người phụ trách</h4>
+      <div class="chart-desc">Khối lượng deal chưa chốt của từng thành viên.</div>
+      <canvas id="chartOwner" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Deal theo dịch vụ</h4>
+      <div class="chart-desc">Cơ cấu deal theo loại dịch vụ đang triển khai.</div>
+      <canvas id="chartService" height="220"></canvas>
+    </div>
+  </div>`;
+}
+let CHART_INSTANCES = [];
+function renderCharts(){
+  CHART_INSTANCES.forEach(ch=>ch.destroy());
+  CHART_INSTANCES = [];
+  const blue='#2f5eff', violet='#7c5cff', amber='#d98a1f', green='#1a9e6f', red='#e5484d', gray='#8892ab';
+  const palette=[blue,violet,amber,green,red,'#0fb5c8','#c9790f',gray];
+
+  // Customer status doughnut
+  const ctx1 = document.getElementById('chartCustStatus');
+  if(ctx1){
+    const data = CUSTOMER_STATUSES.map(s=>STATE.customers.filter(c=>c.status===s.id).length);
+    CHART_INSTANCES.push(new Chart(ctx1, {
+      type:'doughnut',
+      data:{ labels: CUSTOMER_STATUSES.map(s=>s.label), datasets:[{ data, backgroundColor: CUSTOMER_STATUSES.map(s=>s.color), borderWidth:2, borderColor:'#fff' }] },
+      options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5, family:'Montserrat'}}}}, cutout:'62%' }
+    }));
+  }
+  // Deal value by stage bar
+  const ctx2 = document.getElementById('chartDealStage');
+  if(ctx2){
+    const data = DEAL_STAGES.map(s=> validDeals().filter(d=>d.dealStage===s.id).reduce((sum,d)=>sum+(Number(d.value)||0),0));
+    CHART_INSTANCES.push(new Chart(ctx2, {
+      type:'bar',
+      data:{ labels: DEAL_STAGES.map(s=>s.label), datasets:[{ data, backgroundColor: blue, borderRadius:6, maxBarThickness:34 }] },
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>fmtVND(v) } } } }
+    }));
+  }
+  // Deals by owner
+  const ctx3 = document.getElementById('chartOwner');
+  if(ctx3){
+    const own = owners();
+    const data = own.map(o=>validDeals().filter(d=>d.owner===o && !['won','lost'].includes(d.dealStage)).length);
+    CHART_INSTANCES.push(new Chart(ctx3, {
+      type:'bar',
+      data:{ labels: own, datasets:[{ data, backgroundColor: violet, borderRadius:6, maxBarThickness:34 }] },
+      options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+    }));
+  }
+  // Deals by service
+  const ctx4 = document.getElementById('chartService');
+  if(ctx4){
+    const svc = services();
+    const data = svc.map(s=>validDeals().filter(d=>d.service===s).length);
+    CHART_INSTANCES.push(new Chart(ctx4, {
+      type:'pie',
+      data:{ labels: svc, datasets:[{ data, backgroundColor: palette, borderWidth:2, borderColor:'#fff' }] },
+      options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5, family:'Montserrat'}}}} }
+    }));
+  }
+}
+
+function exportFullReportExcel(){
+  if(typeof XLSX === 'undefined'){ showToast('Không thể tải thư viện Excel. Kiểm tra kết nối mạng và thử lại.', true); return; }
+  const openDeals = validDeals().filter(d=>!['won','lost'].includes(d.dealStage));
+  const wonDeals = validDeals().filter(d=>d.dealStage==='won');
+  const lostDeals = validDeals().filter(d=>d.dealStage==='lost');
+  const totalOpenValue = openDeals.reduce((s,d)=>s+(Number(d.value)||0),0);
+  const totalWonValue = wonDeals.reduce((s,d)=>s+(Number(d.value)||0),0);
+  const winRate = (wonDeals.length+lostDeals.length)>0 ? Math.round(wonDeals.length/(wonDeals.length+lostDeals.length)*100) : 0;
+
+  const wb = XLSX.utils.book_new();
+
+  const overviewRows = [
+    ['Chỉ số','Giá trị'],
+    ['Tổng khách hàng', STATE.customers.length],
+    ['Deal đang mở', openDeals.length],
+    ['Tổng giá trị pipeline mở', totalOpenValue],
+    ['Deal đã chốt', wonDeals.length],
+    ['Giá trị đã chốt', totalWonValue],
+    ['Deal thất bại', lostDeals.length],
+    ['Tỷ lệ chốt deal (%)', winRate],
+  ];
+  const wsOverview = XLSX.utils.aoa_to_sheet(overviewRows);
+  wsOverview['!cols'] = [{wch:26},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsOverview, 'Tổng quan');
+
+  const statusRows = [['Trạng thái','Số khách hàng']];
+  CUSTOMER_STATUSES.forEach(s=> statusRows.push([s.label, STATE.customers.filter(c=>c.status===s.id).length]));
+  const wsStatus = XLSX.utils.aoa_to_sheet(statusRows);
+  wsStatus['!cols'] = [{wch:18},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsStatus, 'KH theo trạng thái');
+
+  const stageRows = [['Giai đoạn','Số deal','Tổng giá trị']];
+  DEAL_STAGES.forEach(s=>{
+    const ds = validDeals().filter(d=>d.dealStage===s.id);
+    stageRows.push([s.label, ds.length, ds.reduce((sum,d)=>sum+(Number(d.value)||0),0)]);
+  });
+  const wsStage = XLSX.utils.aoa_to_sheet(stageRows);
+  wsStage['!cols'] = [{wch:16},{wch:12},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsStage, 'Deal theo giai đoạn');
+
+  const own = owners();
+  const ownerRows = [['Người phụ trách','Deal đang mở','Tổng giá trị mở']];
+  own.forEach(o=>{
+    const ds = openDeals.filter(d=>d.owner===o);
+    ownerRows.push([o, ds.length, ds.reduce((sum,d)=>sum+(Number(d.value)||0),0)]);
+  });
+  const wsOwner = XLSX.utils.aoa_to_sheet(ownerRows);
+  wsOwner['!cols'] = [{wch:18},{wch:14},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsOwner, 'Deal theo phụ trách');
+
+  const custRows = [['Tên','Người liên hệ','SĐT','Email','Trạng thái','Ngày vào lead','Cập nhật','Phụ trách','Nguồn']];
+  STATE.customers.forEach(c=> custRows.push([c.name, c.contact||'', c.phone||'', c.email||'', statusMeta(c.status).label, fmtDate((c.createdAt||'').slice(0,10)), fmtDate((c.updatedAt||'').slice(0,10)), c.owner||'', c.source||'']));
+  const wsCust = XLSX.utils.aoa_to_sheet(custRows);
+  wsCust['!cols'] = [{wch:22},{wch:18},{wch:16},{wch:24},{wch:12},{wch:14},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsCust, 'Danh sách khách hàng');
+
+  const dealRows = [['Công ty','Dự án','Dịch vụ','Giá trị','Giai đoạn','Ưu tiên','Follow-up','Deadline','Phụ trách']];
+  validDeals().forEach(d=>{
+    const c = getCustomer(d.customerId);
+    dealRows.push([c?.name||'', d.name, d.service||'', d.value||0, stageMeta(d.dealStage).label, prioMeta(d.priority).label, fmtDate(d.nextFollowUp), fmtDate(d.deadline), d.owner||'']);
+  });
+  const wsDeal = XLSX.utils.aoa_to_sheet(dealRows);
+  wsDeal['!cols'] = [{wch:22},{wch:24},{wch:16},{wch:14},{wch:14},{wch:10},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsDeal, 'Danh sách deal');
+
+  XLSX.writeFile(wb, `midas-crm-report-${todayISO()}.xlsx`);
+  showToast('Đã xuất báo cáo Excel');
+}
+
+/* ================= SETTINGS ================= */
+function renderSettings(){
+  const scope = UI.exportScope || 'all';
+  const scopeCount = exportScopeCustomerCount(scope);
+  return `
+  <div class="settings-grid">
+    <div class="settings-card" style="grid-column:1/-1">
+      <h4>${ICONS.download} Xuất toàn bộ dữ liệu khách hàng (Excel)</h4>
+      <p>Xuất đầy đủ dữ liệu liên quan đến khách hàng — hồ sơ, deal, lịch sử cập nhật, next action, tài liệu/proposal, lịch hẹn — ra 1 file Excel nhiều sheet, trình bày đồng bộ. Chọn phạm vi lọc khách hàng theo ngày vào lead; dữ liệu chi tiết của mỗi khách hàng luôn được xuất đầy đủ, không bị cắt bớt.</p>
+      <div class="filters-bar" style="margin-bottom:14px">
+        <button class="chip-toggle ${scope==='week'?'active':''}" style="${scope==='week'?'background:var(--blue-glass);color:var(--blue-deep)':''}" onclick="setExportScope('week')">Tuần này</button>
+        <button class="chip-toggle ${scope==='month'?'active':''}" style="${scope==='month'?'background:var(--blue-glass);color:var(--blue-deep)':''}" onclick="setExportScope('month')">Tháng này</button>
+        <button class="chip-toggle ${scope==='all'?'active':''}" style="${scope==='all'?'background:var(--blue-glass);color:var(--blue-deep)':''}" onclick="setExportScope('all')">Toàn bộ</button>
+        <span class="mono" style="font-size:11.5px;color:var(--ink-faint);align-self:center;margin-left:4px">${scopeCount} khách hàng trong phạm vi này</span>
+      </div>
+      <button class="btn btn-primary" onclick="exportFullDataExcel()">${ICONS.download} Xuất Excel đầy đủ</button>
+    </div>
+    <div class="settings-card">
+      <h4>${ICONS.download} Backup nhanh</h4>
+      <p>Tải dữ liệu thô dưới dạng JSON (để backup/khôi phục sau này) hoặc CSV (xem nhanh danh sách deal).</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="exportJSON()">${ICONS.download} Export JSON</button>
+        <button class="btn" onclick="exportCSV()">${ICONS.download} Export CSV</button>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h4>${ICONS.upload} Import dữ liệu</h4>
+      <p>Khôi phục dữ liệu từ file JSON đã export trước đó. Thao tác này sẽ <b>ghi đè toàn bộ</b> dữ liệu hiện tại.</p>
+      <button class="btn" onclick="document.getElementById('importFileInput').click()">${ICONS.upload} Chọn file JSON</button>
+    </div>
+    <div class="settings-card">
+      <h4>${ICONS.note} Về Midas CRM Mini</h4>
+      <p>CRM mini quản lý khách hàng & pipeline deal cho Midas Agency. Dữ liệu lưu cục bộ trên trình duyệt (LocalStorage) — không có backend, không đồng bộ giữa các máy. Hãy export định kỳ để backup.</p>
+    </div>
+  </div>`;
+}
+
+/* ================= MODAL ENGINE ================= */
+function openModal(innerHtml, extraClass){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modalOverlay';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeModal(); };
+  overlay.innerHTML = `<div class="modal ${extraClass||''}">${innerHtml}</div>`;
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', escCloseHandler);
+}
+function closeModal(){
+  const el = document.getElementById('modalOverlay');
+  if(el) el.remove();
+  document.removeEventListener('keydown', escCloseHandler);
+}
+function escCloseHandler(e){ if(e.key==='Escape') closeModal(); }
+
+function openConfirmModal(title, msg, onConfirm){
+  openModal(`
+    <div class="confirm-box">
+      <div class="icon-wrap">${ICONS.alert}</div>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(msg)}</p>
+      <div class="actions">
+        <button class="btn" onclick="closeModal()">Huỷ</button>
+        <button class="btn btn-danger" id="confirmActionBtn" style="border-color:var(--red)">Xác nhận</button>
+      </div>
+    </div>
+  `);
+  document.getElementById('confirmActionBtn').onclick = onConfirm;
+}
+
+/* ================= CUSTOMER FORM MODAL ================= */
+function openCustomerModal(customerId){
+  const c = customerId ? getCustomer(customerId) : null;
+  const isEdit = !!c;
+  openModal(`
+    <div class="modal-head"><h3>${isEdit? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'}</h3><button class="modal-close" onclick="closeModal()">${ICONS.x}</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full"><label>Tên khách hàng / Công ty *</label><input id="f_name" value="${escAttr(c?.name||'')}" placeholder="VD: Công ty ABC"></div>
+        <div class="form-field"><label>Người liên hệ</label><input id="f_contact" value="${escAttr(c?.contact||'')}" placeholder="Nguyễn Văn A"></div>
+        <div class="form-field"><label>Chức vụ</label><input id="f_position" value="${escAttr(c?.position||'')}" placeholder="Giám đốc Marketing"></div>
+        <div class="form-field"><label>Số điện thoại</label><input id="f_phone" value="${escAttr(c?.phone||'')}" placeholder="09xx xxx xxx"></div>
+        <div class="form-field"><label>Email</label><input id="f_email" value="${escAttr(c?.email||'')}" placeholder="email@congty.com"></div>
+        <div class="form-field"><label>Website</label><input id="f_website" value="${escAttr(c?.website||'')}" placeholder="https://..."></div>
+        <div class="form-field"><label>Ngành nghề</label><input id="f_industry" value="${escAttr(c?.industry||'')}" placeholder="Bất động sản, F&B..."></div>
+        <div class="form-field"><label>Nguồn khách hàng</label>
+          <select id="f_source"><option value="">— Chọn nguồn —</option>${SOURCES.map(s=>`<option ${c?.source===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+        <div class="form-field"><label>Nhân sự phụ trách</label><input id="f_owner" value="${escAttr(c?.owner||'Leon')}" placeholder="Leon"></div>
+        <div class="form-field"><label>Trạng thái khách hàng</label>
+          <select id="f_status">${CUSTOMER_STATUSES.map(s=>`<option value="${s.id}" ${(c?.status||'lead')===s.id?'selected':''}>${s.label}</option>`).join('')}</select>
+        </div>
+        <div class="form-field"><label>Ngày vào lead</label><input id="f_leaddate" type="date" value="${(c?.createdAt||todayISO()).slice(0,10)}">
+          <span class="hint">Mặc định ngày nhập, có thể chỉnh lại.</span>
+        </div>
+        <div class="form-field full"><label>Ghi chú</label><textarea id="f_note" placeholder="Ghi chú về khách hàng...">${escapeHtml(c?.note||'')}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveCustomer(${c? `'${c.id}'`:'null'})">${ICONS.check} ${isEdit?'Lưu thay đổi':'Thêm khách hàng'}</button>
+    </div>
+  `, 'modal-lg');
+  setTimeout(()=>document.getElementById('f_name')?.focus(), 50);
+}
+
+function saveCustomer(customerId){
+  const name = document.getElementById('f_name').value.trim();
+  if(!name){ showToast('Vui lòng nhập tên khách hàng / công ty', true); return; }
+  const now = new Date().toISOString();
+  const leadDate = document.getElementById('f_leaddate').value || todayISO();
+  const payload = {
+    name,
+    contact: document.getElementById('f_contact').value.trim(),
+    position: document.getElementById('f_position').value.trim(),
+    phone: document.getElementById('f_phone').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    website: document.getElementById('f_website').value.trim(),
+    industry: document.getElementById('f_industry').value.trim(),
+    source: document.getElementById('f_source').value,
+    owner: document.getElementById('f_owner').value.trim(),
+    status: document.getElementById('f_status').value,
+    note: document.getElementById('f_note').value.trim(),
+    createdAt: leadDate,
+    updatedAt: now,
+  };
+  if(customerId){
+    const c = getCustomer(customerId);
+    Object.assign(c, payload);
+    showToast('Đã cập nhật khách hàng');
+  } else {
+    const id = uid();
+    STATE.customers.push({ id, ...payload });
+    addActivity(id, null, 'Tạo hồ sơ khách hàng mới.');
+    showToast('Đã thêm khách hàng mới');
+  }
+  saveState();
+  closeModal();
+  render();
+}
+
+function confirmDeleteCustomer(customerId){
+  const c = getCustomer(customerId);
+  const dealCount = dealsOf(customerId).length;
+  openConfirmModal(
+    'Xoá khách hàng?',
+    `"${c.name}" và ${dealCount} deal liên quan sẽ bị xoá vĩnh viễn. Hành động này không thể hoàn tác.`,
+    ()=>{
+      STATE.customers = STATE.customers.filter(x=>x.id!==customerId);
+      STATE.deals = STATE.deals.filter(d=>d.customerId!==customerId);
+      STATE.activities = STATE.activities.filter(a=>a.customerId!==customerId);
+      saveState(); closeModal();
+      if(UI.detailCustomerId===customerId) UI.detailCustomerId=null;
+      render();
+      showToast('Đã xoá khách hàng');
+    }
+  );
+}
+
+/* ================= BULK IMPORT LEADS (paste-based, appends without overwriting) ================= */
+function openBulkImportModal(){
+  const sample = [
+    'Thành\t0901999998\tthanh.vq1983@gmail.com\t17/08/2026\tAU1786959109482_42af2c15',
+    'Lê Huy Khoa Kanata\t0913101919\t\t17/08/2026\tLH0000022',
+    'Định\t0903224686\ttrungdinh08@gmail.com\t16/08/2026\tAU1786869516537_c9610e09',
+    'Hiếu\t0977040546\tduchieu.phan@smartlinkvn.com\t06/08/2026\tLH0000020',
+    'Dũng\t0969234171\tcskh.vinatag@gmail.com\t09/08/2026\tAU1786239925204_1afd25ec',
+    'Stevent\t0922279444\tsteven.nvt373@gmail.com\t07/08/2026\tAU1786088370547_761f1cfd',
+    'Trường Sơn\t0902775256\t\t10/08/2026\tLH0000021',
+    'Trường\t0909002636\tvovantruong368@gmail.com\t11/08/2026\tAU1786420428141_4c720003',
+    'Hoàng\t0981681812\tboza9x102@gmail.com\t12/08/2026\tAU1786534979258_423a9b7b',
+    'Khánh Ly\t0934047866\tbrandboost.vn@gmail.com\t24/07/2026\tAU1784869442580_633a5065',
+  ].join('\n');
+
+  openModal(`
+    <div class="modal-head"><h3>Nhập nhanh nhiều lead</h3><button class="modal-close" onclick="closeModal()">${ICONS.x}</button></div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ink-faint);margin-bottom:10px;line-height:1.7">
+        Mỗi dòng 1 lead, các cột cách nhau bằng <b>Tab</b> (dán trực tiếp từ Excel/Google Sheets) hoặc dấu phẩy, theo thứ tự:<br>
+        <span class="mono" style="font-size:11.5px">Tên · SĐT · Email · Ngày tạo (dd/mm/yyyy, tuỳ chọn) · Ghi chú (tuỳ chọn)</span><br>
+        Dữ liệu chỉ được <b>thêm mới</b>, không ảnh hưởng khách hàng đã có. Nội dung mẫu bên dưới lấy từ danh sách anh gửi — rà lại số liệu rồi bấm "Thêm tất cả".
+      </p>
+      <textarea id="bulkImportText" style="width:100%;min-height:230px;padding:11px;border-radius:9px;border:1px solid var(--border);outline:none;font-family:'Montserrat',sans-serif;font-size:12.5px;line-height:1.8;resize:vertical" spellcheck="false">${sample}</textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="runBulkImport()">${ICONS.check} Thêm tất cả</button>
+    </div>
+  `, 'modal-lg');
+  setTimeout(()=>document.getElementById('bulkImportText')?.focus(), 50);
+}
+
+function parseBulkLine(line){
+  let cols = line.split('\t');
+  if(cols.length < 2) cols = line.split(',');
+  return cols.map(c=>c.trim());
+}
+function parseVNDate(str){
+  const m = (str||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return null;
+  return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+function runBulkImport(){
+  const raw = document.getElementById('bulkImportText').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  let added = 0, skipped = 0;
+  const now = new Date().toISOString();
+
+  lines.forEach(line=>{
+    const cols = parseBulkLine(line);
+    const name = cols[0] || '';
+    if(!name || /^(tên|họ và tên|name|customer|khách hàng)$/i.test(name)){ skipped++; return; }
+    const phone = cols[1] || '';
+    const email = cols[2] || '';
+    const leadDate = parseVNDate(cols[3]) || todayISO();
+    const refCode = cols[4] || '';
+    const id = uid();
+    STATE.customers.push({
+      id, name, contact: name, position:'', phone, email, website:'', industry:'',
+      source:'Import nhanh', owner:'Leon', status:'lead',
+      note: refCode ? `Mã liên hệ: ${refCode}` : '',
+      createdAt: leadDate, updatedAt: now,
+    });
+    addActivity(id, null, 'Tạo hồ sơ khách hàng mới (import nhanh).');
+    added++;
+  });
+
+  if(added){
+    saveState();
+    showToast(`Đã thêm ${added} lead mới${skipped? `, bỏ qua ${skipped} dòng không hợp lệ`:''}`);
+    closeModal();
+    render();
+  } else {
+    showToast('Không có dòng dữ liệu hợp lệ nào để thêm', true);
+  }
+}
+
+/* ================= DEAL FORM MODAL ================= */
+function openDealModal(dealId, presetCustomerId){
+  const d = dealId ? getDeal(dealId) : null;
+  const isEdit = !!d;
+  if(!STATE.customers.length){ showToast('Cần thêm khách hàng trước khi tạo deal', true); return; }
+  openModal(`
+    <div class="modal-head"><h3>${isEdit? 'Chỉnh sửa deal' : 'Thêm deal mới'}</h3><button class="modal-close" onclick="closeModal()">${ICONS.x}</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field full"><label>Khách hàng *</label>
+          <select id="fd_customer">${STATE.customers.map(c=>`<option value="${c.id}" ${(d?.customerId||presetCustomerId)===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+        </div>
+        <div class="form-field"><label>Tên dự án / Deal *</label><input id="fd_name" value="${escAttr(d?.name||'')}" placeholder="VD: SEO Website tổng thể"></div>
+        <div class="form-field"><label>Dịch vụ / Sản phẩm</label><input id="fd_service" value="${escAttr(d?.service||'SEO')}" placeholder="SEO, Website, Google Ads..." list="serviceList">
+          <datalist id="serviceList">${services().map(s=>`<option value="${escAttr(s)}">`).join('')}</datalist>
+        </div>
+        <div class="form-field"><label>Giá trị deal dự kiến (VNĐ)</label><input id="fd_value" type="number" min="0" value="${d?.value ?? ''}" placeholder="300000000"></div>
+        <div class="form-field"><label>Người phụ trách</label><input id="fd_owner" value="${escAttr(d?.owner||'Leon')}" placeholder="Leon"></div>
+        <div class="form-field"><label>Ngày bắt đầu deal</label><input id="fd_start" type="date" value="${d?.startDate||todayISO()}"></div>
+        <div class="form-field"><label>Deadline / Ngày dự kiến chốt</label><input id="fd_deadline" type="date" value="${d?.deadline||''}"></div>
+        <div class="form-field"><label>Ngày follow-up tiếp theo</label><input id="fd_followup" type="date" value="${d?.nextFollowUp||''}"></div>
+        <div class="form-field"><label>Trạng thái deal</label>
+          <select id="fd_stage">${DEAL_STAGES.map(s=>`<option value="${s.id}" ${(d?.dealStage||'lead')===s.id?'selected':''}>${s.label}</option>`).join('')}</select>
+        </div>
+        <div class="form-field"><label>Mức độ ưu tiên</label>
+          <select id="fd_priority">${PRIORITIES.map(p=>`<option value="${p.id}" ${(d?.priority||'medium')===p.id?'selected':''}>${p.emoji} ${p.label}</option>`).join('')}</select>
+        </div>
+        <div class="form-field"><label>Xác suất chốt (%)</label><input id="fd_prob" type="number" min="0" max="100" value="${d?.probability ?? 30}"></div>
+        <div class="form-field"><label>Next Action</label>
+          <select id="fd_nextaction">${NEXT_ACTIONS.map(a=>`<option ${d?.nextAction===a?'selected':''}>${a}</option>`).join('')}</select>
+        </div>
+        <div class="form-field full"><label>Ghi chú</label><textarea id="fd_note" placeholder="Ghi chú về deal...">${escapeHtml(d?.note||'')}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      ${isEdit? `<button class="btn btn-danger" style="margin-right:auto" onclick="confirmDeleteDeal('${d.id}')">${ICONS.trash} Xoá deal</button>`:''}
+      <button class="btn" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveDeal(${d? `'${d.id}'`:'null'})">${ICONS.check} ${isEdit?'Lưu thay đổi':'Thêm deal'}</button>
+    </div>
+  `, 'modal-lg');
+  setTimeout(()=>document.getElementById('fd_name')?.focus(), 50);
+}
+
+function saveDeal(dealId){
+  const name = document.getElementById('fd_name').value.trim();
+  const customerId = document.getElementById('fd_customer').value;
+  if(!name){ showToast('Vui lòng nhập tên dự án / deal', true); return; }
+  const payload = {
+    customerId,
+    name,
+    service: document.getElementById('fd_service').value.trim(),
+    value: document.getElementById('fd_value').value ? Number(document.getElementById('fd_value').value) : null,
+    owner: document.getElementById('fd_owner').value.trim(),
+    startDate: document.getElementById('fd_start').value,
+    deadline: document.getElementById('fd_deadline').value,
+    nextFollowUp: document.getElementById('fd_followup').value,
+    dealStage: document.getElementById('fd_stage').value,
+    priority: document.getElementById('fd_priority').value,
+    probability: Number(document.getElementById('fd_prob').value)||0,
+    nextAction: document.getElementById('fd_nextaction').value,
+    note: document.getElementById('fd_note').value.trim(),
+  };
+  const c = getCustomer(customerId);
+  if(dealId){
+    Object.assign(getDeal(dealId), payload);
+    addActivity(customerId, dealId, `Cập nhật thông tin deal "${name}".`);
+    showToast('Đã cập nhật deal');
+  } else {
+    const id = uid();
+    STATE.deals.push({ id, ...payload, documents: [] });
+    addActivity(customerId, id, `Tạo deal mới "${name}".`);
+    showToast('Đã thêm deal mới');
+  }
+  if(c){ c.updatedAt = new Date().toISOString(); }
+  saveState();
+  closeModal();
+  if(UI.detailCustomerId) renderCustomerDetailIfOpen();
+  render();
+}
+
+function confirmDeleteDeal(dealId){
+  const d = getDeal(dealId);
+  openConfirmModal('Xoá deal?', `Deal "${d.name}" sẽ bị xoá vĩnh viễn cùng lịch sử liên quan.`, ()=>{
+    STATE.deals = STATE.deals.filter(x=>x.id!==dealId);
+    STATE.activities = STATE.activities.filter(a=>a.dealId!==dealId);
+    saveState(); closeModal(); render();
+    showToast('Đã xoá deal');
+  });
+}
+
+function duplicateDeal(dealId){
+  const d = getDeal(dealId);
+  const copy = { ...d, id: uid(), name: d.name + ' (bản sao)', dealStage:'lead' };
+  STATE.deals.push(copy);
+  addActivity(d.customerId, copy.id, `Nhân bản từ deal "${d.name}".`);
+  saveState();
+  showToast('Đã nhân bản deal');
+  render();
+}
+
+/* ================= DEAL DETAIL — full deal dashboard ================= */
+function openDealDetail(dealId){
+  const d = getDeal(dealId);
+  if(!d) return;
+  UI.detailDealId = dealId;
+  UI.dealDetailTab = UI.dealDetailTab || 'journey';
+  renderDealDetailIfOpen(true);
+}
+function renderDealDetailIfOpen(forceOpen){
+  const d = getDeal(UI.detailDealId);
+  if(!d) return;
+  const html = dealDetailHtml(d);
+  if(forceOpen || document.getElementById('modalOverlay')){
+    openModal(html, 'modal-lg');
+  }
+}
+function setDealDetailTab(tab){ UI.dealDetailTab = tab; renderDealDetailIfOpen(true); }
+
+function dealDetailHtml(d){
+  const c = getCustomer(d.customerId);
+  const stage = stageMeta(d.dealStage);
+  const prio = prioMeta(d.priority);
+  const acts = STATE.activities.filter(a=>a.dealId===d.id).sort((a,b)=> a.date.localeCompare(b.date));
+  const docs = d.documents || [];
+  const diff = daysDiff(d.nextFollowUp);
+  const overdue = diff!==null && diff<0 && !['won','lost'].includes(d.dealStage);
+
+  return `
+  <div class="modal-head">
+    <div>
+      <h3>${escapeHtml(d.name)}</h3>
+      <div style="display:flex;gap:8px;margin-top:7px;flex-wrap:wrap;align-items:center">
+        <span class="badge" style="background:var(--blue-glass);color:var(--blue-deep)"><span class="dot"></span>${stage.label}</span>
+        <span class="badge-priority">${prio.emoji} ${prio.label}</span>
+        <span class="mono" style="font-size:12px;color:var(--ink-faint)">${escapeHtml(c?.name||'—')}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-sm" onclick="openDealModal('${d.id}')">${ICONS.edit} Sửa deal</button>
+      <button class="modal-close" onclick="closeModal()">${ICONS.x}</button>
+    </div>
+  </div>
+  <div class="modal-body">
+    <div class="detail-grid">
+      <div class="detail-info">
+        <div class="form-divider" style="border:none;padding:0;margin:0 0 10px">Thông tin khách hàng</div>
+        <dl>
+          <div><dt>Công ty</dt><dd>${escapeHtml(c?.name||'—')}${c? ` · <a style="color:var(--blue-deep);cursor:pointer;font-weight:600" onclick="openCustomerDetail('${c.id}')">Xem hồ sơ</a>`:''}</dd></div>
+          <div><dt>Trạng thái KH</dt><dd>${c? renderStatusSelect(c) : '—'}</dd></div>
+          <div><dt>Người liên hệ</dt><dd>${escapeHtml(c?.contact||'—')}${c?.position? ' · '+escapeHtml(c.position):''}</dd></div>
+          <div><dt>Điện thoại</dt><dd>${c?.phone? `<a href="tel:${escAttr(c.phone)}">${escapeHtml(c.phone)}</a>`:'—'}</dd></div>
+          <div><dt>Email</dt><dd>${c?.email? `<a href="mailto:${escAttr(c.email)}">${escapeHtml(c.email)}</a>`:'—'}</dd></div>
+          <div><dt>Website</dt><dd>${c?.website? `<a href="${escAttr(c.website)}" target="_blank" rel="noopener">${escapeHtml(c.website.replace(/^https?:\/\//,''))}</a>`:'—'}</dd></div>
+          <div><dt>Ngành nghề</dt><dd>${escapeHtml(c?.industry||'—')}</dd></div>
+          <div><dt>Nguồn</dt><dd>${escapeHtml(c?.source||'—')}</dd></div>
+        </dl>
+
+        <div class="form-divider" style="border:none;padding:0;margin:18px 0 10px">Thông tin deal</div>
+        <dl>
+          <div><dt>Dịch vụ</dt><dd>${escapeHtml(d.service||'—')}</dd></div>
+          <div><dt>Giá trị dự kiến</dt><dd class="mono" style="font-weight:700;color:var(--blue-deep)">${fmtVNDFull(d.value)}</dd></div>
+          <div><dt>Xác suất chốt</dt><dd>${d.probability ?? 0}%</dd></div>
+          <div><dt>Người phụ trách</dt><dd>${escapeHtml(d.owner||'—')}</dd></div>
+          <div><dt>Ngày bắt đầu</dt><dd class="mono">${fmtDate(d.startDate)}</dd></div>
+          <div><dt>Deadline</dt><dd class="mono">${fmtDate(d.deadline)}</dd></div>
+          <div><dt>Follow-up kế tiếp</dt><dd class="mono" style="${overdue?'color:var(--red);font-weight:700':''}">${fmtDate(d.nextFollowUp)}${overdue? ' · quá hạn':''}</dd></div>
+        </dl>
+        ${d.note? `<div style="margin-top:14px;padding:11px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--ink-soft);line-height:1.6">${escapeHtml(d.note)}</div>`:''}
+        <div class="next-action-box">${ICONS.target}<div><b>${escapeHtml(d.nextAction||'—')}</b><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">Next action</div></div></div>
+      </div>
+
+      <div>
+        <div class="detail-tabs">
+          <button class="detail-tab ${UI.dealDetailTab!=='docs'?'active':''}" onclick="setDealDetailTab('journey')">Hành trình deal (${acts.length})</button>
+          <button class="detail-tab ${UI.dealDetailTab==='docs'?'active':''}" onclick="setDealDetailTab('docs')">Proposal / Tài liệu (${docs.length})</button>
+        </div>
+        ${UI.dealDetailTab==='docs' ? renderDealDocs(d, docs) : renderDealJourney(d, acts)}
+      </div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" style="margin-right:auto" onclick="confirmDeleteDeal('${d.id}')">${ICONS.trash} Xoá deal</button>
+    <button class="btn" onclick="closeModal()">Đóng</button>
+  </div>`;
+}
+
+function renderDealJourney(d, acts){
+  return `
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <input id="newDealNote" placeholder="Ghi chú tình trạng deal (VD: Khách yêu cầu điều chỉnh ngân sách...)" style="flex:1;padding:9px 11px;border-radius:9px;border:1px solid var(--border);outline:none" onkeydown="if(event.key==='Enter'){addDealNote('${d.id}')}">
+    <button class="btn btn-primary btn-sm" onclick="addDealNote('${d.id}')">${ICONS.plus} Thêm</button>
+  </div>
+  <div class="timeline" style="max-height:400px;overflow-y:auto;padding-right:8px">
+    ${acts.length? acts.map(a=>`
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-body">
+          <div class="timeline-date">${fmtDateTime(a.date)}</div>
+          <div class="timeline-text">${escapeHtml(a.content)}</div>
+        </div>
+      </div>
+    `).join('') : `<div class="empty-state" style="padding:24px 10px">${ICONS.note}<b>Chưa có ghi chú nào cho deal này</b><span>Ghi lại từng bước trao đổi để không phụ thuộc trí nhớ.</span></div>`}
+  </div>`;
+}
+
+function addDealNote(dealId){
+  const input = document.getElementById('newDealNote');
+  const text = input.value.trim();
+  if(!text) return;
+  const d = getDeal(dealId);
+  addActivity(d.customerId, dealId, text);
+  const c = getCustomer(d.customerId); if(c) c.updatedAt = new Date().toISOString();
+  saveState();
+  renderDealDetailIfOpen(true);
+}
+
+function renderDealDocs(d, docs){
+  return `
+  <div class="card" style="padding:14px;margin-bottom:14px;background:var(--bg)">
+    <div class="form-grid" style="grid-template-columns:1fr 1fr">
+      <div class="form-field"><label>Tên tài liệu</label><input id="doc_title" placeholder="VD: Proposal SEO v2"></div>
+      <div class="form-field"><label>Link</label><input id="doc_url" placeholder="https://docs.google.com/..."></div>
+      <div class="form-field full"><label>Ghi chú (tuỳ chọn)</label><input id="doc_note" placeholder="VD: Gửi khách 20/08, chờ phản hồi"></div>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="addDealDocument('${d.id}')">${ICONS.plus} Gắn link tài liệu</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:9px;max-height:340px;overflow-y:auto;padding-right:6px">
+    ${docs.length? docs.slice().reverse().map(doc=>`
+      <div class="deal-mini-card" style="margin-bottom:0">
+        <div class="deal-mini-top">
+          <a href="${escAttr(doc.url)}" target="_blank" rel="noopener" style="color:var(--blue-deep);text-decoration:none;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px">${ICONS.globe}${escapeHtml(doc.title||doc.url)}</a>
+          <button class="btn btn-ghost btn-sm" onclick="deleteDealDocument('${d.id}','${doc.id}')">${ICONS.trash}</button>
+        </div>
+        ${doc.note? `<div class="cell-sub" style="margin-top:4px">${escapeHtml(doc.note)}</div>`:''}
+        <div class="kcard-owner" style="margin-top:7px">Đã thêm ${fmtDateTime(doc.addedAt)}</div>
+      </div>
+    `).join('') : `<div class="empty-state" style="padding:24px 10px">${ICONS.note}<b>Chưa có tài liệu / proposal nào</b><span>Gắn link Google Docs, Drive, Canva... để lưu trữ tại đây.</span></div>`}
+  </div>`;
+}
+
+function addDealDocument(dealId){
+  const title = document.getElementById('doc_title').value.trim();
+  let url = document.getElementById('doc_url').value.trim();
+  const note = document.getElementById('doc_note').value.trim();
+  if(!url){ showToast('Vui lòng nhập link tài liệu', true); return; }
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const d = getDeal(dealId);
+  if(!d.documents) d.documents = [];
+  d.documents.push({ id: uid(), title: title || url, url, note, addedAt: new Date().toISOString() });
+  addActivity(d.customerId, dealId, `Gắn tài liệu: ${title || url}`);
+  saveState();
+  showToast('Đã gắn link tài liệu');
+  UI.dealDetailTab = 'docs';
+  renderDealDetailIfOpen(true);
+}
+
+function deleteDealDocument(dealId, docId){
+  const d = getDeal(dealId);
+  if(!d || !d.documents) return;
+  d.documents = d.documents.filter(x=>x.id!==docId);
+  saveState();
+  showToast('Đã xoá tài liệu');
+  UI.dealDetailTab = 'docs';
+  renderDealDetailIfOpen(true);
+}
+
+/* ================= CUSTOMER DETAIL MODAL ================= */
+function openCustomerDetail(customerId, tab){
+  UI.detailCustomerId = customerId;
+  UI.detailTab = tab || 'info';
+  renderCustomerDetailIfOpen(true);
+}
+function renderCustomerDetailIfOpen(forceOpen){
+  const c = getCustomer(UI.detailCustomerId);
+  if(!c) return;
+  const html = customerDetailHtml(c);
+  if(forceOpen || document.getElementById('modalOverlay')){
+    openModal(html, 'modal-lg');
+  }
+}
+function setDetailTab(tab){ UI.detailTab = tab; renderCustomerDetailIfOpen(true); }
+
+function customerDetailHtml(c){
+  const deals = dealsOf(c.id);
+  const acts = activitiesOf(c.id);
+  const naItems = nextActionsOf(c.id);
+  const naPending = naItems.filter(n=>!n.done).length;
+
+  return `
+  <div class="modal-head">
+    <div>
+      <h3>${escapeHtml(c.name)}</h3>
+      <div style="margin-top:4px">${renderStatusSelect(c)}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-sm" onclick="openCustomerModal('${c.id}')">${ICONS.edit} Sửa</button>
+      <button class="modal-close" onclick="closeModal()">${ICONS.x}</button>
+    </div>
+  </div>
+  <div class="modal-body">
+    <div class="detail-tabs">
+      <button class="detail-tab ${UI.detailTab==='info'?'active':''}" onclick="setDetailTab('info')">Thông tin</button>
+      <button class="detail-tab ${UI.detailTab==='deals'?'active':''}" onclick="setDetailTab('deals')">Deal (${deals.length})</button>
+      <button class="detail-tab ${UI.detailTab==='status'?'active':''}" onclick="setDetailTab('status')">Tình trạng (${acts.length})</button>
+      <button class="detail-tab ${UI.detailTab==='next'?'active':''}" onclick="setDetailTab('next')">Next Action ${naPending? `(${naPending})`:''}</button>
+    </div>
+    ${UI.detailTab==='info'? renderDetailInfo(c) : ''}
+    ${UI.detailTab==='deals'? renderDetailDeals(c, deals) : ''}
+    ${UI.detailTab==='status'? renderDetailStatus(c, acts) : ''}
+    ${UI.detailTab==='next'? renderDetailNextActions(c) : ''}
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" style="margin-right:auto" onclick="confirmDeleteCustomer('${c.id}')">${ICONS.trash} Xoá khách hàng</button>
+    <button class="btn" onclick="closeModal()">Đóng</button>
+  </div>`;
+}
+
+function renderDetailInfo(c){
+  const totalVal = dealsOf(c.id).reduce((s,d)=>s+(Number(d.value)||0),0);
+  return `
+  <div class="detail-info">
+    <dl style="display:grid; grid-template-columns:1fr 1fr; gap:16px 28px;">
+      <div><dt>Người liên hệ</dt><dd>${escapeHtml(c.contact||'—')}${c.position? ' · '+escapeHtml(c.position):''}</dd></div>
+      <div><dt>Điện thoại</dt><dd>${c.phone? `<a href="tel:${escAttr(c.phone)}">${escapeHtml(c.phone)}</a>`:'—'}</dd></div>
+      <div><dt>Email</dt><dd>${c.email? `<a href="mailto:${escAttr(c.email)}">${escapeHtml(c.email)}</a>`:'—'}</dd></div>
+      <div><dt>Website</dt><dd>${c.website? `<a href="${escAttr(c.website)}" target="_blank" rel="noopener">${escapeHtml(c.website.replace(/^https?:\/\//,''))}</a>`:'—'}</dd></div>
+      <div><dt>Ngành nghề</dt><dd>${escapeHtml(c.industry||'—')}</dd></div>
+      <div><dt>Nguồn</dt><dd>${escapeHtml(c.source||'—')}</dd></div>
+      <div><dt>Phụ trách</dt><dd>${escapeHtml(c.owner||'—')}</dd></div>
+      <div><dt>Tổng giá trị deal</dt><dd class="mono" style="font-weight:700">${fmtVND(totalVal)}</dd></div>
+      <div><dt>Ngày tạo</dt><dd class="mono">${fmtDate((c.createdAt||'').slice(0,10))}</dd></div>
+      <div><dt>Cập nhật gần nhất</dt><dd class="mono">${fmtDate((c.updatedAt||'').slice(0,10))}</dd></div>
+    </dl>
+    ${c.note? `<div style="margin-top:18px;padding:12px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--ink-soft);line-height:1.6"><b style="display:block;margin-bottom:4px;color:var(--ink-faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">Ghi chú</b>${escapeHtml(c.note)}</div>`:''}
+  </div>`;
+}
+
+function renderDetailDeals(c, deals){
+  return `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn btn-sm btn-primary" onclick="openDealModal(null,'${c.id}')">${ICONS.plus} Thêm deal</button>
+  </div>
+  ${deals.length? deals.map(d=>{
+    const stage = stageMeta(d.dealStage);
+    const diff = daysDiff(d.nextFollowUp);
+    const overdue = diff!==null && diff<0 && !['won','lost'].includes(d.dealStage);
+    return `<div class="deal-mini-card clickable" style="cursor:pointer" onclick="openDealDetail('${d.id}')">
+      <div class="deal-mini-top">
+        <span class="name">${escapeHtml(d.name)}</span>
+        <span class="badge" style="background:var(--blue-glass);color:var(--blue-deep)">${stage.label}</span>
+      </div>
+      <div class="deal-mini-meta">
+        <span class="mono">${fmtVND(d.value)}</span>
+        <span>${escapeHtml(d.service||'—')}</span>
+        <span>${escapeHtml(d.owner||'—')}</span>
+        <span style="${overdue?'color:var(--red);font-weight:700':''}">Follow-up: ${fmtDate(d.nextFollowUp)}</span>
+        <span class="badge-priority">${prioMeta(d.priority).emoji}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px">
+        <button class="btn btn-sm" onclick="event.stopPropagation(); openDealModal('${d.id}')">${ICONS.edit} Sửa</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation(); duplicateDeal('${d.id}')">${ICONS.copy} Nhân bản</button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); confirmDeleteDeal('${d.id}')">${ICONS.trash}</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty-state" style="padding:30px 10px">${ICONS.pipeline}<b>Chưa có deal nào</b></div>`}
+  `;
+}
+
+function renderDetailStatus(c, acts){
+  const openDeals = dealsOf(c.id).filter(d=>!['won','lost'].includes(d.dealStage));
+  return `
+  <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--bg)">
+    <div class="form-field full" style="margin-bottom:10px">
+      <label>Cập nhật tình trạng</label>
+      <textarea id="statusUpdateText" placeholder="VD: Khách yêu cầu điều chỉnh ngân sách, đang chờ phản hồi..." style="min-height:56px"></textarea>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:10px; cursor:pointer">
+      <input type="checkbox" id="statusCreateNA" onchange="toggleStatusNAFields()" style="width:16px;height:16px;accent-color:var(--blue)">
+      Đồng thời tạo Next Action từ cập nhật này
+    </label>
+    <div id="statusNAFields" class="hidden" style="margin-bottom:10px">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-field"><label>Hạn xử lý</label><input type="date" id="statusNADue"></div>
+        ${openDeals.length? `<div class="form-field"><label>Gắn deal (tuỳ chọn)</label>
+          <select id="statusNADeal"><option value="">Không gắn deal cụ thể</option>${openDeals.map(d=>`<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}</select>
+        </div>` : ''}
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="addStatusUpdate('${c.id}')">${ICONS.plus} Thêm cập nhật</button>
+  </div>
+  <div class="timeline" style="max-height:360px;overflow-y:auto;padding-right:6px">
+    ${acts.length? acts.map(a=>`
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-body">
+          <div class="timeline-date">${fmtDateTime(a.date)}</div>
+          <div class="timeline-text">${escapeHtml(a.content)}</div>
+        </div>
+      </div>
+    `).join('') : `<div class="empty-state" style="padding:20px 10px">${ICONS.note}<b>Chưa có cập nhật tình trạng nào</b></div>`}
+  </div>`;
+}
+
+function toggleStatusNAFields(){
+  const box = document.getElementById('statusCreateNA');
+  const fields = document.getElementById('statusNAFields');
+  if(!box || !fields) return;
+  fields.classList.toggle('hidden', !box.checked);
+}
+
+function addStatusUpdate(customerId){
+  const textEl = document.getElementById('statusUpdateText');
+  const text = textEl.value.trim();
+  if(!text) return;
+  addActivity(customerId, null, text);
+
+  const createNA = document.getElementById('statusCreateNA')?.checked;
+  if(createNA){
+    const dueDate = document.getElementById('statusNADue')?.value || null;
+    const dealSel = document.getElementById('statusNADeal');
+    const dealId = dealSel ? (dealSel.value || null) : null;
+    STATE.nextActions.push({ id: uid(), customerId, dealId, text, dueDate, done:false, createdAt: new Date().toISOString() });
+    showToast('Đã thêm cập nhật và tạo Next Action');
+  } else {
+    showToast('Đã thêm cập nhật tình trạng');
+  }
+
+  const c = getCustomer(customerId); if(c) c.updatedAt = new Date().toISOString();
+  saveState();
+  renderCustomerDetailIfOpen(true);
+}
+
+function renderDetailNextActions(c){
+  const openDeals = dealsOf(c.id).filter(d=>!['won','lost'].includes(d.dealStage));
+  const items = nextActionsOf(c.id);
+  return `
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    <input id="na_text" placeholder="Next action mới (VD: Gọi lại khách chiều thứ 5...)" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);outline:none" onkeydown="if(event.key==='Enter'){addNextActionForCustomer('${c.id}')}">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="na_due" type="date" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);outline:none;flex:1;min-width:130px">
+      ${openDeals.length? `<select id="na_deal" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);flex:1;min-width:150px">
+        <option value="">Không gắn deal cụ thể</option>
+        ${openDeals.map(d=>`<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+      </select>` : ''}
+      <button class="btn btn-primary btn-sm" onclick="addNextActionForCustomer('${c.id}')">${ICONS.plus} Thêm</button>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
+    ${items.length? items.map(na=>{
+      const d = na.dealId ? getDeal(na.dealId) : null;
+      const diff = na.dueDate ? daysDiff(na.dueDate) : null;
+      const overdue = !na.done && diff!==null && diff<0;
+      return `<div class="next-action-box" style="align-items:flex-start;${na.done?'opacity:.5':''}">
+        <button class="btn btn-ghost btn-sm" style="padding:5px;flex-shrink:0" onclick="toggleNextActionDone('${na.id}')" title="${na.done?'Đánh dấu chưa xong':'Đánh dấu hoàn thành'}">
+          ${na.done? ICONS.check : `<span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border-strong);border-radius:5px"></span>`}
+        </button>
+        <div style="flex:1;min-width:0">
+          <b style="${na.done?'text-decoration:line-through':''}">${escapeHtml(na.text)}</b>
+          <div style="font-size:11.5px;color:${overdue?'var(--red)':'var(--ink-faint)'};margin-top:2px">
+            ${d? escapeHtml(d.name)+' · ' : ''}${na.dueDate? fmtDate(na.dueDate) + (overdue?' · quá hạn':'') : 'Không hẹn ngày'}
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="deleteNextAction('${na.id}')" title="Xoá">${ICONS.trash}</button>
+      </div>`;
+    }).join('') : `<div class="empty-state" style="padding:20px 10px">${ICONS.target}<b>Chưa có next action nào</b><span>Thêm việc cần làm tiếp theo cho khách hàng này.</span></div>`}
+  </div>`;
+}
+
+/* ================= IMPORT / EXPORT ================= */
+function setExportScope(scope){ UI.exportScope = scope; render(); }
+
+function exportScopeCustomers(scope){
+  if(scope==='week'){
+    const b = buildWeekBuckets(1)[0];
+    return { list: STATE.customers.filter(c=>{ const cd=(c.createdAt||'').slice(0,10); return cd && cd>=b.start && cd<=b.end; }), label: `Tuần ${b.label} (${fmtDate(b.start)} - ${fmtDate(b.end)})`, suffix:'tuan' };
+  }
+  if(scope==='month'){
+    const b = buildMonthBuckets(1)[0];
+    return { list: STATE.customers.filter(c=>{ const cd=(c.createdAt||'').slice(0,10); return cd && cd>=b.start && cd<=b.end; }), label: b.sub, suffix:'thang' };
+  }
+  return { list: [...STATE.customers], label: 'Toàn bộ', suffix:'toanbo' };
+}
+function exportScopeCustomerCount(scope){ return exportScopeCustomers(scope).list.length; }
+
+function exportFullDataExcel(){
+  if(typeof XLSX === 'undefined'){ showToast('Không thể tải thư viện Excel. Kiểm tra kết nối mạng và thử lại.', true); return; }
+  const scope = UI.exportScope || 'all';
+  const { list: scopedCustomers, label: scopeLabel, suffix } = exportScopeCustomers(scope);
+  if(!scopedCustomers.length){ showToast('Không có khách hàng nào trong phạm vi đã chọn.', true); return; }
+  const scopedIds = new Set(scopedCustomers.map(c=>c.id));
+  const scopedDeals = validDeals().filter(d=>scopedIds.has(d.customerId));
+  const scopedActs = STATE.activities.filter(a=>scopedIds.has(a.customerId)).sort((a,b)=>a.date.localeCompare(b.date));
+  const scopedNA = STATE.nextActions.filter(n=>scopedIds.has(n.customerId));
+  const scopedMeetings = STATE.meetings.filter(m=>scopedIds.has(m.customerId)).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const totalDocs = scopedDeals.reduce((s,d)=>s+((d.documents||[]).length),0);
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet: Tổng quan
+  const overviewRows = [
+    ['Phạm vi xuất', scopeLabel],
+    ['Ngày xuất', fmtDate(todayISO())],
+    ['Tổng khách hàng', scopedCustomers.length],
+    ['Tổng deal', scopedDeals.length],
+    ['Tổng lịch sử cập nhật', scopedActs.length],
+    ['Tổng next action', scopedNA.length],
+    ['Tổng tài liệu / proposal', totalDocs],
+    ['Tổng lịch hẹn', scopedMeetings.length],
+  ];
+  const wsOverview = XLSX.utils.aoa_to_sheet(overviewRows);
+  wsOverview['!cols'] = [{wch:24},{wch:36}];
+  XLSX.utils.book_append_sheet(wb, wsOverview, 'Tổng quan');
+
+  // Sheet: Khách hàng
+  const custRows = [['Tên','Người liên hệ','Chức vụ','SĐT','Email','Website','Ngành nghề','Nguồn','Phụ trách','Trạng thái','Ngày vào lead','Cập nhật gần nhất','Ghi chú']];
+  scopedCustomers.forEach(c=> custRows.push([c.name, c.contact||'', c.position||'', c.phone||'', c.email||'', c.website||'', c.industry||'', c.source||'', c.owner||'', statusMeta(c.status).label, fmtDate((c.createdAt||'').slice(0,10)), fmtDate((c.updatedAt||'').slice(0,10)), c.note||'']));
+  const wsCust = XLSX.utils.aoa_to_sheet(custRows);
+  wsCust['!cols'] = [{wch:22},{wch:18},{wch:18},{wch:16},{wch:24},{wch:22},{wch:16},{wch:14},{wch:12},{wch:12},{wch:14},{wch:14},{wch:36}];
+  XLSX.utils.book_append_sheet(wb, wsCust, 'Khách hàng');
+
+  // Sheet: Deal
+  const dealRows = [['Công ty','Dự án','Dịch vụ','Giá trị','Giai đoạn','Ưu tiên','Xác suất %','Người phụ trách','Ngày bắt đầu','Deadline','Follow-up kế tiếp','Next Action','Ghi chú']];
+  scopedDeals.forEach(d=>{
+    const c = getCustomer(d.customerId);
+    dealRows.push([c?.name||'', d.name, d.service||'', d.value||0, stageMeta(d.dealStage).label, prioMeta(d.priority).label, d.probability??'', d.owner||'', fmtDate(d.startDate), fmtDate(d.deadline), fmtDate(d.nextFollowUp), d.nextAction||'', d.note||'']);
+  });
+  const wsDeal = XLSX.utils.aoa_to_sheet(dealRows);
+  wsDeal['!cols'] = [{wch:22},{wch:26},{wch:16},{wch:14},{wch:14},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:14},{wch:18},{wch:36}];
+  XLSX.utils.book_append_sheet(wb, wsDeal, 'Deal');
+
+  // Sheet: Lịch sử cập nhật (hành trình)
+  const actRows = [['Ngày giờ','Khách hàng','Deal liên quan','Nội dung']];
+  scopedActs.forEach(a=>{
+    const c = getCustomer(a.customerId);
+    const d = a.dealId ? getDeal(a.dealId) : null;
+    actRows.push([fmtDateTime(a.date), c?.name||'', d?.name||'', a.content]);
+  });
+  const wsAct = XLSX.utils.aoa_to_sheet(actRows);
+  wsAct['!cols'] = [{wch:18},{wch:22},{wch:24},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, wsAct, 'Lịch sử cập nhật');
+
+  // Sheet: Next Action
+  const naRows = [['Khách hàng','Deal liên quan','Việc cần làm','Hạn','Trạng thái','Ngày tạo']];
+  scopedNA.forEach(n=>{
+    const c = getCustomer(n.customerId);
+    const d = n.dealId ? getDeal(n.dealId) : null;
+    naRows.push([c?.name||'', d?.name||'', n.text, n.dueDate? fmtDate(n.dueDate):'', n.done?'Đã xong':'Đang chờ', fmtDateTime(n.createdAt)]);
+  });
+  const wsNA = XLSX.utils.aoa_to_sheet(naRows);
+  wsNA['!cols'] = [{wch:22},{wch:24},{wch:40},{wch:12},{wch:12},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsNA, 'Next Action');
+
+  // Sheet: Tài liệu / Proposal
+  const docRows = [['Khách hàng','Deal','Tên tài liệu','Link','Ghi chú','Ngày thêm']];
+  scopedDeals.forEach(d=>{
+    (d.documents||[]).forEach(doc=>{
+      const c = getCustomer(d.customerId);
+      docRows.push([c?.name||'', d.name, doc.title||'', doc.url||'', doc.note||'', fmtDateTime(doc.addedAt)]);
+    });
+  });
+  const wsDoc = XLSX.utils.aoa_to_sheet(docRows);
+  wsDoc['!cols'] = [{wch:22},{wch:24},{wch:24},{wch:36},{wch:30},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsDoc, 'Tài liệu Proposal');
+
+  // Sheet: Lịch hẹn
+  const mtRows = [['Ngày','Giờ','Khách hàng','Deal liên quan','Tiêu đề','Địa điểm / Link','Ghi chú']];
+  scopedMeetings.forEach(mt=>{
+    const c = getCustomer(mt.customerId);
+    const d = mt.dealId ? getDeal(mt.dealId) : null;
+    mtRows.push([fmtDate(mt.date), mt.time||'', c?.name||'', d?.name||'', mt.title, mt.location||'', mt.note||'']);
+  });
+  const wsMt = XLSX.utils.aoa_to_sheet(mtRows);
+  wsMt['!cols'] = [{wch:14},{wch:10},{wch:22},{wch:24},{wch:28},{wch:24},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsMt, 'Lịch hẹn');
+
+  XLSX.writeFile(wb, `midas-crm-fulldata-${suffix}-${todayISO()}.xlsx`);
+  showToast(`Đã xuất Excel đầy đủ (${scopeLabel})`);
+}
+
+function exportJSON(){
+  const data = JSON.stringify(STATE, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `midas-crm-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Đã export dữ liệu JSON');
+}
+function exportCSV(){
+  const rows = [['Công ty','Người liên hệ','SĐT','Email','Trạng thái KH','Dự án','Dịch vụ','Giá trị','Giai đoạn deal','Ưu tiên','Follow-up','Deadline','Phụ trách','Next Action']];
+  validDeals().forEach(d=>{
+    const c = getCustomer(d.customerId);
+    rows.push([c?.name||'', c?.contact||'', c?.phone||'', c?.email||'', statusMeta(c?.status).label, d.name, d.service||'', d.value||'', stageMeta(d.dealStage).label, prioMeta(d.priority).label, d.nextFollowUp||'', d.deadline||'', d.owner||'', d.nextAction||'']);
+  });
+  const csv = rows.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `midas-crm-export-${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Đã export dữ liệu CSV');
+}
+function handleImportFile(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.customers) || !Array.isArray(data.deals)) throw new Error('invalid');
+      openConfirmModal('Import dữ liệu?', `File chứa ${data.customers.length} khách hàng và ${data.deals.length} deal. Dữ liệu hiện tại sẽ bị ghi đè.`, ()=>{
+        STATE = { customers:data.customers||[], deals:data.deals||[], activities:data.activities||[], nextActions:data.nextActions||[], meetings:data.meetings||[] };
+        saveState(); closeModal(); render();
+        showToast('Đã import dữ liệu thành công');
+      });
+    }catch(e){
+      showToast('File không hợp lệ. Vui lòng chọn đúng file JSON đã export.', true);
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+/* ================= INIT ================= */
+initApp();
+</script>
+</body>
+</html>
